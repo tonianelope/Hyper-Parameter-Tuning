@@ -14,8 +14,26 @@ Recommender Systems](http://socialcomputing.know-center.tugraz.at/rs-bda/papers/
 * [Blog Post about ML Hyper Parameter Optimization with some useful links](https://www.jeremyjordan.me/hyperparameter-tuning/)
 * [Bayesian Optimization Example](https://towardsdatascience.com/automated-machine-learning-hyperparameter-tuning-in-python-dfda59b72f8a)
 * [Longish paper on topic](https://support.sas.com/resources/papers/proceedings17/SAS0514-2017.pdf)
+* [A Disciplined Approach to NN Hyperparameters - 2018](https://arxiv.org/pdf/1803.09820.pdf)
+* [List of papers by Algorithm - 2018](https://github.com/hibayesian/awesome-automl-papers#hyperparameter-optimization)
+
 
 ### Frameworks/Libraries
-* [hyperas](https://github.com/maxpumperla/hyperas)
-* [hyperopt-sklearn](https://github.com/hyperopt/hyperopt-sklearn)
-* [NNI?](https://github.com/Microsoft/nni)
+
+| Search Algorithm          | [scikit-learn][4-sk] | [scikit-optimize][3-skopt] | [hyperopt-sklearn][2-hopt] |
+|---------------            |-------------   |-------------     | ---------------  |
+| Grid Search               | x              |                  |                  |
+| Random Search             | x              | x                |   x              |
+| Baysian Opt               |                | x                |             |
+| Tree of Parzen Estimators |               |                 |  x  |
+| Annealing                 |                 |                 | x |
+| Tree                      |                 |                  | x |
+| Gaussian Proccess Tree    |                  | x               | x |
+
+
+
+[1]: https://github.com/maxpumperla/hyperas
+[2-hopt]: https://github.com/hyperopt/hyperopt-sklearn
+[3-skopt]: https://scikit-optimize.github.io/
+[4-sk]: http://scikit-learn.org/0.17/modules/grid_search.html
+[nni]: https://github.com/Microsoft/nni
