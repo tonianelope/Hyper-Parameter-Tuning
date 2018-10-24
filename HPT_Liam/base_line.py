@@ -30,3 +30,10 @@ print(classification_report(y_test, pred_rfc))
 rfc_eval = cross_val_score(estimator = rfc, X = X_train, y = y_train, cv = 10)
 
 print("The mean cross-validation score is ", rfc_eval.mean())
+
+
+
+
+
+
+

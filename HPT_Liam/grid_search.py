@@ -6,7 +6,6 @@ from sklearn.ensemble import RandomForestClassifier
 from time import time
 from sklearn.preprocessing import LabelEncoder
 
-
 def report(results, n_top=3):
     for i in range(1, n_top + 1):
         candidates = np.flatnonzero(results['rank_test_score'] == i)
@@ -17,7 +16,6 @@ def report(results, n_top=3):
                 results['std_test_score'][candidate]))
             print("Parameters: {0}".format(results['params'][candidate]))
             print("")
-
 
 wine = pd.read_csv("winequality-red.csv")
 
