@@ -1,0 +1,11 @@
+
+HPT_Liam/\.idea/
+
+HPT_Liam/venv/
+
+env/
+
+HPT_core/__pycache__
+
+HPT_core/hyperopt-sklearn/
+HPT_core/.ipynb_checkpoints/
