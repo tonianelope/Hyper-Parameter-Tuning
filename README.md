@@ -14,6 +14,7 @@ Recommender Systems](http://socialcomputing.know-center.tugraz.at/rs-bda/papers/
 * [Blog Post about ML Hyper Parameter Optimization with some useful links](https://www.jeremyjordan.me/hyperparameter-tuning/)
 * [Bayesian Optimization Example](https://towardsdatascience.com/automated-machine-learning-hyperparameter-tuning-in-python-dfda59b72f8a)
 * [Longish paper on topic](https://support.sas.com/resources/papers/proceedings17/SAS0514-2017.pdf)
+=======
 * [A Disciplined Approach to NN Hyperparameters - 2018](https://arxiv.org/pdf/1803.09820.pdf)
 * [List of papers by Algorithm - 2018](https://github.com/hibayesian/awesome-automl-papers#hyperparameter-optimization)
 
