@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from dotmap import DotMap
+from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
 from time import time
 from tqdm.auto import tqdm
 from sklearn import datasets
@@ -81,20 +83,39 @@ def cmp_hpt_methods(htp_objs, model, dataset, loss, metric, dataset_split=3, nam
 
     return htp_results
 
+def run_cv(X, y, model, params, loss, max_iter=100):
+    params = params.toDict() if isinstance(params, DotMap) else params
+    m = model(**params)
+    scores = cross_val_score(m, X, y, cv=DS_SPLITS)
+    #print(scores[0])
+    return {'loss': -1*scores[0], 'params': params, 'status': STATUS_OK}
+
+def run_baseline(*args):
+    # params = params.toDict() if isinstance(params, DotMap) else params
+    # m = model(**params)
+    # scores = cross_val_score(m, X, y, cv=DS_SPLITS) #TODO  scoring=loss,
+    return [run_cv(*args)]
+    # return [{'loss': -1*scores, 'params': params}]
+
 def sklearn_search(sk_search, X, y, model, param_grid, loss, max_iter=100):
     s_model = sk_search(model(), param_grid, cv=DS_SPLITS)
     s_model.fit(X, y)
     obj = {'loss': s_model.cv_results_['mean_test_score'] * -1, 'params': s_model.cv_results_['params']}
     return [dict(zip(obj,t)) for t in zip(*obj.values())]
 
-def grid_search(*params): #(X, y, model, param_grid, loss, max_iter=100):
-    return sklearn_search(GridSearchCV, *params)
+def grid_search(*args):
+    return sklearn_search(GridSearchCV, *args)
 
-def random_search(*params): #(X, y, model, param_grid, loss, max_iter=100):
-    return sklearn_search(RandomizedSearchCV, *params)
+def random_search(*args):
+    return sklearn_search(RandomizedSearchCV, *args)
 
-def run_baseline(X, y, model, params, loss, max_iter=100):
-    params = params.toDict() # convert DotMap to dict
-    m = model(**params)
-    scores = cross_val_score(m, X, y, cv=DS_SPLITS) #TODO  scoring=metric,
-    return [{'loss': np.mean(scores), 'params': params}]
+def tpe_search(X, y, model, param_grid, loss, max_iter=100):
+    trials = Trials()
+    results = fmin(
+        fn=lambda param: run_cv(X, y, model, param, loss),
+        space=param_grid,
+        algo=tpe.suggest,
+        trials=trials,
+        max_evals=max_iter
+    )
+    return trials.results
