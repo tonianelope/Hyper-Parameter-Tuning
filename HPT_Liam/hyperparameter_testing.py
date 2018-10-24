@@ -1,171 +1,91 @@
 import numpy as np
 import pandas as pd
-from sklearn import linear_model
-from sklearn.model_selection import train_test_split
-from sklearn.datasets import load_boston
-from sklearn.datasets import load_iris
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score
-import matplotlib.pyplot as plt
-from sklearn.model_selection import GridSearchCV
 
-from sklearn.preprocessing import scale
-from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.decomposition import PCA
+from time import time
+
 from sklearn.metrics import classification_report
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.preprocessing import LabelEncoder
+from scipy.stats import randint as sp_randint
 
-#https://www.youtube.com/watch?v=Gol_qOgRqfA
-def test_cross_val_score():
-    iris = load_iris()
+def report(results, n_top=3):
+    for i in range(1, n_top + 1):
+        candidates = np.flatnonzero(results['rank_test_score'] == i)
+        for candidate in candidates:
+            print("Model with rank: {0}".format(i))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})".format(
+                results['mean_test_score'][candidate],
+                results['std_test_score'][candidate]))
+            print("Parameters: {0}".format(results['params'][candidate]))
+            print("")
 
-    X = iris.data
-    y = iris.target
+def test_random_tree_classifier():
+    wine = pd.read_csv("winequality-red.csv")
 
-    knn = KNeighborsClassifier(n_neighbors=5)
-    scores = cross_val_score(knn, X, y, cv = 10, scoring='accuracy')
-    #print(scores.mean())
+    bins = (2, 6, 8)
+    group_names = ['bad', 'good']
+    wine['quality'] = pd.cut(wine['quality'], bins = bins, labels = group_names)
 
-    k_range = range(1, 31)
-    k_scores = []
+    label_quality = LabelEncoder()
+    wine['quality'] = label_quality.fit_transform(wine['quality'])
+    wine['quality'].value_counts()
 
-    for k in k_range:
-        knn = KNeighborsClassifier(n_neighbors=k)
-        scores = cross_val_score(knn, X, y, cv=10, scoring='accuracy')
-        k_scores.append(scores.mean())
-    #print(k_scores)
+    X = wine.drop('quality', axis = 1)
+    y = wine['quality']
 
-    plt.plot(k_range, k_scores)
-    plt.xlabel('Value of K for KNN')
-    plt.ylabel('Cross-Validated Accuracy')
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
+    rfc = RandomForestClassifier()
+    rfc.fit(X_train, y_train)
+    pred_rfc = rfc.predict(X_test)
 
-
-    param_grid = dict(n_neighbors=k_range)
-    #print(param_grid)
-
-    grid = GridSearchCV(knn, param_grid, cv=10, scoring='accuracy')
-
-    grid.fit(X, y)
-
-    #print(grid.cv_results_['params'][0])
-    #print(grid.cv_results_['mean_test_score'][0])
-
-    grid_mean_scores = grid.cv_results_['mean_test_score']
-    #print(grid_mean_scores)
-
-    #print(grid.best_score_)
-    #print(grid.best_params_)
-    #print(grid.best_estimator_)
-
-    knn = KNeighborsClassifier(n_neighbors=13, weights='uniform')
-
-    k_range = list(range(1, 31))
-    weight_options = ['uniform', 'distance']
-
-    param_grid = dict(n_neighbors = k_range, weights = weight_options)
-
-    grid = GridSearchCV(knn, param_grid, cv = 10, scoring = 'accuracy', return_train_score=False)
-    grid.fit(X, y)
-
-    grid.cv_results_
-
-    print(grid.best_score_)
-    print(grid.best_params_)
-
-    knn.fit(X, y)
-
-    print(knn.predict([[3,5,4,2]]))
-
-    print(grid.predict([[3,5,4,2]]))
-    #RANDOMIZED SEARCH CV
-
-    param_dist = dict(n_neighbors = k_range, weights = weight_options)
-
-    rand = RandomizedSearchCV(knn, param_dist, cv=10, scoring='accuracy', n_iter=10, random_state=5, return_train_score=False)
-    rand.fit(X,y)
-
-    print(rand.best_score_)
-    print(rand.best_params_)
-
-    best_scores = []
-    for _ in range(20):
-        rand = RandomizedSearchCV(knn, param_dist, cv=10, scoring='accuracy', n_iter=10, random_state=5, return_train_score=False)
-        rand.fit(X,y)
-        best_scores.append(round(rand.best_score_, 3))
-
-    print(best_scores)
-
-    #Start with GridSearchCV and switch to RandomSearchCV when grid is taking longer than available time.
-    #When using Rand, start with small n_iter, time how long it takes, then do the math for how large n_iter can be
-    #without running over available time.
-
-#https://www.youtube.com/watch?v=1nWFHa6K23w
-#def test_logistic_regression():
-
-    #cars = pd.read_csv("mtcars.csv")
-
-    #cars.columns = ['car_names', "mpg", "cyl", "disp", "hp", "drat", "wt", "qsec", "vs", "am", "gear", "carb"]
-    #cars_data = cars.ix[:, (5, 11)].values
-    #cars_data_names = ["drat", "carb"]
-    #y = cars.ix[:,9].values
-    #X = scale(cars_data)
-    #LogReg = LogisticRegression()
-    #LogReg.fit(X, y)
-    #print(LogReg.score(X, y))
-    #y_pred = LogReg.predict(X)
-    #print(classification_report(y, y_pred))
-
-#https://chrisalbon.com/machine_learning/model_selection/hyperparameter_tuning_using_grid_search/
-def test_logistic_regression_2():
-    iris = load_iris()
-    X = iris.data
-    y = iris.target
-
-    logistic = linear_model.LogisticRegression()
-
-    penalty = ['l1', 'l2']
-    C = np.logspace(0, 4, 10)
-    hyperparameters = dict(C=C, penalty=penalty)
-
-    clf = GridSearchCV(logistic, hyperparameters, cv=5,verbose=0)
-
-    best_model = clf.fit(X,y)
-
-    print("Best Penalty:", best_model.best_estimator_.get_params()['penalty'])
-    print("Best C:", best_model.best_estimator_.get_params()['C'])
-
-    print(best_model.predict(X))
+    print(classification_report(y_test, pred_rfc))
 
 
-#From youtube video (https://www.youtube.com/watch?v=aeWmdojEJf0)
-def test_linear_regression():
+    rfc_eval = cross_val_score(estimator = rfc, X = X_train, y = y_train, cv = 10)
 
-    #Dataset from sklearn about housing prices
-    boston = load_boston()
+    print("The mean cross-validation score is ", rfc_eval.mean())
+    # Maximum number
 
-    #Dataframes
-    df_x = pd.DataFrame(boston.data, columns= boston.feature_names)
-    df_y = boston.target
+    random_grid = {"max_depth": [3, None],
+                  "max_features": sp_randint(1, 11),
+                  "min_samples_split": sp_randint(2, 11),
+                  "bootstrap": [True, False],
+                  "criterion": ["gini", "entropy"]}
 
-    #Split the data into train and test sets
-    x_train, x_test, y_train, y_test = train_test_split(df_x, df_y, test_size = 0.2, random_state = 4)
+    param_grid = {"max_depth": [3, None],
+                  "max_features": [1, 3, 10],
+                  "min_samples_split": [2, 3, 10],
+                  "bootstrap": [True, False],
+                  "criterion": ["gini", "entropy"]}
 
-    #Perform linear regression
-    reg = linear_model.LinearRegression()
-    reg.fit(x_train, y_train)
 
-    #find
-    a = reg.predict(x_test)
 
-    #return mean square
-    return np.mean((a - y_test)**2)
+    rf_grid = GridSearchCV(estimator=rfc, param_grid=param_grid, cv =3, n_jobs = -1, verbose=2)
+    start = time()
+    rf_grid.fit(X_train, y_train)
+    print("GridSearchCV took ", (time()-start), " seconds.")
+    report(rf_grid.cv_results_)
+
+    rf_random = RandomizedSearchCV(estimator=rfc, param_distributions=random_grid, n_iter=60, cv=3, verbose=2, n_jobs=-1)
+    start = time()
+    rf_random.fit(X_train, y_train)
+    print("RandomizedSearchCV took ",(time()-start)," seconds.")
+    report(rf_random.cv_results_)
+
+    best_grid = rf_grid.best_estimator_
+    best_random = rf_random.best_estimator_
+
+
+
 
 def main():
+    test_random_tree_classifier()
 
-    #print(test_linear_regression())
-    #print(test_logistic_regression_2())
-    #test_cross_val_score()
-    #test_multiple_params()
-
-if __name__ == '__main__':
-  main()
+if __name__ == "__main__":
+    main()
