@@ -1,1 +1,18 @@
-#results to go here - waiting on grid search results
+*****CENSUS BASELINE DATA, kernel=linear*****
+('accuracy: ', 0.78060046189376442)
+('Precision:', 0.73818181818181816)
+('Recall:', 0.89823008849557517)
+*****CENSUS BASELINE DATA, kernel=rbf*****
+('accuracy: ', 0.95381062355658197)
+('Precision:', 0.97685185185185186)
+('Recall:', 0.9336283185840708)
+*****CENSUS GRIDSEARCH*****
+{'kernel': 'rbf', 'C': 10, 'gamma': 0.01}
+('accuracy: ', 0.9676674364896074)
+('Precision:', 0.96491228070175439)
+('Recall:', 0.97345132743362828)
+*****CENSUS RANDOMIZED SEARCH*****
+{'kernel': 'rbf', 'C': 10, 'gamma': 0.01}
+('accuracy: ', 0.9676674364896074)
+('Precision:', 0.96491228070175439)
+('Recall:', 0.97345132743362828)
