@@ -10,7 +10,7 @@ from sklearn.datasets import make_classification
 from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
-
+from skopt import BayesSearchCV
 
 MODEL = 'Model'
 HPT_METHOD = 'Hyper optimization method'
@@ -22,8 +22,10 @@ MEAN = 'Mean '
 
 DS_SPLITS = 2
 
-def test_func():
-    print('Hello3')
+
+# include below until https://github.com/scikit-optimize/scikit-optimize/issues/718 is resolved
+class BayesSearchCV(BayesSearchCV):
+    def _run_search(self, x): raise BaseException('Use newer skopt')
 
 def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
     data = {
@@ -49,7 +51,7 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
 
             data[CV_TIME].append(duration)
             data[PARAMS_SAMPLED].append(len(tune_results))
-            #print(tune_results)
+            print(tune_results)
             best_params = sorted(tune_results, key=lambda d: d['loss'])
             best_params = best_params[0]['params']
             data[BEST_PARAMS].append(best_params)
@@ -97,10 +99,10 @@ def run_baseline(*args):
     return [run_cv(*args)]
     # return [{'loss': -1*scores, 'params': params}]
 
-def sklearn_search(sk_search, X, y, model, param_grid, loss, max_iter=100):
-    s_model = sk_search(model(), param_grid, cv=DS_SPLITS)
+def sklearn_search(sk_search, X, y, model, param_grid, loss, max_iter=10):
+    s_model = sk_search(model(), param_grid, cv=DS_SPLITS, n_iter=max_iter)
     s_model.fit(X, y)
-    obj = {'loss': s_model.cv_results_['mean_test_score'] * -1, 'params': s_model.cv_results_['params']}
+    obj = {'loss': s_model.cv_results_['mean_test_score'], 'params': s_model.cv_results_['params']}
     return [dict(zip(obj,t)) for t in zip(*obj.values())]
 
 def grid_search(*args):
@@ -108,6 +110,9 @@ def grid_search(*args):
 
 def random_search(*args):
     return sklearn_search(RandomizedSearchCV, *args)
+
+def baysian_search(*args):
+    return sklearn_search(BayesSearchCV, *args)
 
 def tpe_search(X, y, model, param_grid, loss, max_iter=100):
     trials = Trials()
