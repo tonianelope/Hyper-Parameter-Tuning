@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from dotmap import DotMap
 from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
@@ -13,15 +14,14 @@ from sklearn.linear_model import LogisticRegression
 from skopt import BayesSearchCV
 
 MODEL = 'Model'
-HPT_METHOD = 'Hyper optimization method'
+HPT_METHOD = 'HPT method'
 TEST_ACC = 'Test accuracy'
 BEST_PARAMS = 'Best Parameters'
-CV_TIME = 'Cross validation time (in s)'
+CV_TIME = 'Cross-val. time (in s)'
 PARAMS_SAMPLED = 'Parameters sampled'
 MEAN = 'Mean '
 
 DS_SPLITS = 2
-
 
 # include below until https://github.com/scikit-optimize/scikit-optimize/issues/718 is resolved
 class BayesSearchCV(BayesSearchCV):
@@ -89,20 +89,19 @@ def run_cv(X, y, model, params, loss, max_iter=100):
     params = params.toDict() if isinstance(params, DotMap) else params
     m = model(**params)
     scores = cross_val_score(m, X, y, cv=DS_SPLITS)
-    #print(scores[0])
-    return {'loss': -1*scores[0], 'params': params, 'status': STATUS_OK}
+    return {'loss': scores[0], 'params': params, 'status': STATUS_OK}
 
 def run_baseline(*args):
-    # params = params.toDict() if isinstance(params, DotMap) else params
-    # m = model(**params)
-    # scores = cross_val_score(m, X, y, cv=DS_SPLITS) #TODO  scoring=loss,
     return [run_cv(*args)]
-    # return [{'loss': -1*scores, 'params': params}]
 
 def sklearn_search(sk_search, X, y, model, param_grid, loss, max_iter=10):
     s_model = sk_search(model(), param_grid, cv=DS_SPLITS, n_iter=max_iter)
     s_model.fit(X, y)
-    obj = {'loss': s_model.cv_results_['mean_test_score'], 'params': s_model.cv_results_['params']}
+    obj = {
+        'loss': s_model.cv_results_['mean_test_score'],
+        'params': s_model.cv_results_['params']
+    }
+    # convert obj of lists to list of objs
     return [dict(zip(obj,t)) for t in zip(*obj.values())]
 
 def grid_search(*args):
@@ -124,3 +123,12 @@ def tpe_search(X, y, model, param_grid, loss, max_iter=100):
         max_evals=max_iter
     )
     return trials.results
+
+
+#--------VISUALISE/SUMMARY FUNCTIONALITY------------
+
+def table(results, columns=[HPT_METHOD, MEAN+TEST_ACC, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED]):
+    df = pd.DataFrame(results)
+    df = df[columns] # select columns to return
+    return df
+
