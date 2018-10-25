@@ -5,6 +5,17 @@ import os
 from sklearn.datasets import *
 from sklearn.datasets.base import Bunch
 
+
+def load(name):
+    LOAD = {
+        'iris': load_iris(),
+        'digits': load_digits(),
+        'census_csv': load_census_50k(),
+        'wine': load_wine(),
+        'breast_cancer': load_breast_cancer(),
+    }
+    return LOAD[name]
+
 def load_census_50k(return_X_y=False):
     filename = 'census_data.csv'
     path = os.path.join('../SVM/census',filename)
