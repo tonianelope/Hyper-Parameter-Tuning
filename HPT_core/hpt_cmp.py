@@ -6,7 +6,7 @@ from dotmap import DotMap
 from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
 from time import time
 from tqdm.autonotebook import tqdm
-from sklearn import datasets
+#from sklearn import datasets
 from sklearn.datasets import make_classification
 from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import accuracy_score
