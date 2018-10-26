@@ -10,8 +10,8 @@ from time import time
 from tqdm import tqdm_notebook as tqdm
 #from sklearn import datasets
 from sklearn.datasets import make_classification
-from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_validate
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_validate, train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.linear_model import LogisticRegression
 from skopt import BayesSearchCV
 
@@ -70,7 +70,7 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
         data[INNER_RES].append(tune_results)
         data[PARAMS_SAMPLED].append(len(tune_results))
         # print(tune_results)
-        best_params = sorted(tune_results, key=lambda d: d['loss'])
+        best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
         data[STD_TEST_ACC].append(best_params[0]['std'])
         best_params = best_params[0]['params']
         data[BEST_PARAMS].append(best_params)
@@ -107,16 +107,22 @@ def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_sta
 
 def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
     X, y =dataset
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
     results = []
+
     for (name, param_grid, method, args) in hpt_objs:
-        res = method(X, y, model, param_grid, scoring=loss, verbose=1, **args)
+        res = method(X_train, y_train, model, param_grid, scoring=loss, verbose=1, **args)
+
         best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
+        best_params = best_params[0]['params']
+        model(**best_params)
+        y_pred = model.fit(X_train, y_train).predict(X_test)
+
         results.append({
             'method':name,
             'data': res,
-            'best_params'
-            'conf_matrix': ,
-            'conf_matrix_normalised':  ,
+            'best_params': best_params,
+            'conf_matrix': confusion_matrix(y_test, y_pred),
         })
     return results
 
@@ -222,8 +228,15 @@ def plot_by_ds(val, list_of_results, datasets):
     ax.set_xlabel('Datasets')
     ax.set_ylabel(val)
 
-def plot_confusion_matrix(cfm, normalise=True):
+def plot_confusion_matrix(cfm, classes, normalise=True, title='Confusion Matrix'):
     if normalise:
         cfm = cfm.astype('float')/ cfm.sum(axis=1)[:,np.newaxis]
-    sn.heatmap(cfm, annot=True,annot_kws={"size": 16}, cmap=plt.cm.Blues)
-    # TODO set axis names etc
+
+    ax = sn.heatmap(cfm, annot=True,annot_kws={"size": 16}, cmap=plt.cm.Blues)
+
+    ax.set_title(title)
+    tick_marks = np.arange(len(classes))
+    ax.set_xticklabels(classes)
+    ax.set_yticklabels(classes)
+    ax.set_ylabel('True label')
+    ax.set_xlabel('Predicted label')
