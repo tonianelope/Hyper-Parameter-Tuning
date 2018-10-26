@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sn
 
 from collections import namedtuple
 from dotmap import DotMap
@@ -220,3 +221,9 @@ def plot_by_ds(val, list_of_results, datasets):
     ax.set_xticklabels(datasets, rotation=45)
     ax.set_xlabel('Datasets')
     ax.set_ylabel(val)
+
+def plot_confusion_matrix(cfm, normalise=True):
+    if normalise:
+        cfm = cfm.astype('float')/ cfm.sum(axis=1)[:,np.newaxis]
+    sn.heatmap(cfm, annot=True,annot_kws={"size": 16}, cmap=plt.cm.Blues)
+    # TODO set axis names etc
