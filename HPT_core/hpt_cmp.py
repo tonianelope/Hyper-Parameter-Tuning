@@ -20,17 +20,19 @@ HPT_METHOD = 'HPT method'
 TEST_ACC = 'Test accuracy'
 BEST_PARAMS = 'Best Parameters'
 CV_TIME = 'Cross-val. time (in s)'
+FIT_TIME = 'Fit time'
 PARAMS_SAMPLED = 'Parameters sampled'
 STD_TEST_ACC = 'Std'
 MEAN = 'Mean '
 INNER_RES = 'Inner result'
+CONF_MATRIX = 'Confusion matrix'
 
 DEFAULT_COLUMNS = [
     HPT_METHOD, MEAN+TEST_ACC, MEAN+STD_TEST_ACC, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED
 ]
 
 DS_SPLITS = 2
-MAX_ITER = 10
+MAX_ITER = 5
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -51,11 +53,10 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
     }
 
     # run outer cross-validation
-    #with tqdm(total=DS_SPLITS) as pbar:
     for train_i, test_i in dataset_folds:
         X_train, X_test = X[train_i], X[test_i]
         y_train, y_test = y[train_i], y[test_i]
-        
+
         start = time()
         # for each hyperparam setting run inner cv
         tune_results = hpt_obj.method(
@@ -65,20 +66,19 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
             **hpt_obj.args
         )
         duration = time() - start
-        
+
         data[CV_TIME].append(duration)
         data[INNER_RES].append(tune_results)
         data[PARAMS_SAMPLED].append(len(tune_results))
-        # print(tune_results)
+
         best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
         data[STD_TEST_ACC].append(best_params[0]['std'])
         best_params = best_params[0]['params']
         data[BEST_PARAMS].append(best_params)
-        # print(best_params)
+
         best_model = model(**best_params)
         best_model.fit(X_train, y_train)
         data[TEST_ACC].append(metric(y_test, best_model.predict(X_test)))
-        #       pbar.update(1)
 
     # get Mean values
     for item in [TEST_ACC, CV_TIME, PARAMS_SAMPLED, STD_TEST_ACC]:
@@ -95,7 +95,6 @@ def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_sta
 
     htp_results = []
 
-
     for htp_obj in hpt_objs:
         # print("HTP using {}".format(htp_obj.name))
 
@@ -107,24 +106,30 @@ def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_sta
 
 def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
     X, y =dataset
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=random_state)
     results = []
+    print(MAX_ITER, DS_SPLITS)
 
-    for (name, param_grid, method, args) in hpt_objs:
-        res = method(X_train, y_train, model, param_grid, scoring=loss, verbose=1, **args)
+    with tqdm(total=len(hpt_objs)) as pbar:
+        for (name, param_grid, method, args) in hpt_objs:
 
-        print(res)
-        best_params_index = np.argmax(res['mean_test_score'])
-        best_params = res['params'][best_params_index]
-        best_model = model(**best_params)
-        y_pred = best_model.fit(X_train, y_train).predict(X_test)
+            res = method(X_train, y_train, model, param_grid, scoring=loss, verbose=0, **args)
 
-        results.append({
-            'method':name,
-            'data': res,
-            'best_params': best_params,
-            'conf_matrix': confusion_matrix(y_test, y_pred),
-        })
+            best_params_index = np.argmax(res['mean_test_score'])
+            best_params = res['params'][best_params_index]
+            best_model = model(**best_params)
+            y_pred = best_model.fit(X_train, y_train).predict(X_test)
+            
+            results.append({
+                HPT_METHOD : name,
+                INNER_RES : res,
+                BEST_PARAMS : best_params,
+                CONF_MATRIX : confusion_matrix(y_test, y_pred),
+                TEST_ACC : accuracy_score(y_test, y_pred),
+                PARAMS_SAMPLED : len(res)
+            })
+            pbar.update(1)
+
     return results
 
 
@@ -149,11 +154,16 @@ def mean_results(results, params):
     return cv_results
 
 def run_cv(X, y, model, params, scoring, verbose=1, max_iter=MAX_ITER):
+    print(X.shape[1])
+    print(params)
+
     m = model(**params)
     scores = cross_validate(m, X, y, scoring=scoring, cv=DS_SPLITS)
     scores = mean_results(scores, params)
     scores['status'] = STATUS_OK
     scores['loss'] = scores['mean_test_score']
+    print(scores['loss'])
+    print(scores['mean_test_score'])
     return scores
     # return  {
     #     'loss': -1*scores.mean(),
@@ -169,7 +179,7 @@ def sklearn_search(X, y, s_model):
     #s_model = sk_search(model(), param_grid, cv=DS_SPLITS, n_iter=max_iter)
     s_model.fit(X, y)
     obj = {
-        'loss': -1*np.array(s_model.cv_results_['mean_test_score']),
+        'loss': np.array(s_model.cv_results_['mean_test_score']),
         'params': s_model.cv_results_['params'],
         'std': s_model.cv_results_['std_test_score']
     }
@@ -230,12 +240,18 @@ def plot_by_ds(val, list_of_results, datasets):
     ax.set_xlabel('Datasets')
     ax.set_ylabel(val)
 
+'''
+cfm       -> (numpy array) - confusion matrix
+classes   -> (array) - target lables for plot
+noramlise -> (bool) - noramlise matrix
+title     -> (str) - plot title
+'''
 def plot_confusion_matrix(cfm, classes, normalise=True, title='Confusion Matrix'):
     if normalise:
         cfm = cfm.astype('float')/ cfm.sum(axis=1)[:,np.newaxis]
 
     plt.figure()
-    ax = sn.heatmap(cfm, annot=True,cmap=plt.cm.Blues) #annot_kws={"size": 16} #font size
+    ax = sn.heatmap(cfm, annot=True, cmap=plt.cm.Blues)
 
     ax.set_title(title)
     tick_marks = np.arange(len(classes))
