@@ -113,10 +113,11 @@ def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name
     for (name, param_grid, method, args) in hpt_objs:
         res = method(X_train, y_train, model, param_grid, scoring=loss, verbose=1, **args)
 
-        best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
-        best_params = best_params[0]['params']
-        model(**best_params)
-        y_pred = model.fit(X_train, y_train).predict(X_test)
+        print(res)
+        best_params_index = np.argmax(res['mean_test_score'])
+        best_params = res['params'][best_params_index]
+        best_model = model(**best_params)
+        y_pred = best_model.fit(X_train, y_train).predict(X_test)
 
         results.append({
             'method':name,
@@ -161,7 +162,8 @@ def run_cv(X, y, model, params, scoring, verbose=1, max_iter=MAX_ITER):
     #     'status': STATUS_OK}
 
 def run_baseline(*args, **kargs):
-    return [run_cv(*args, **kargs)]
+    res = [run_cv(*args, **kargs)]
+    return {k: [dic[k] for dic in res] for k in res[0]}
 
 def sklearn_search(X, y, s_model):
     #s_model = sk_search(model(), param_grid, cv=DS_SPLITS, n_iter=max_iter)
@@ -195,7 +197,7 @@ def tpe_search(X, y, model, param_grid, scoring, verbose=1, max_iter=MAX_ITER):
         trials=trials,
         max_evals=max_iter
     )
-    return trials.results
+    return {k: [dic[k] for dic in trials.results] for k in trials.results[0]}
 
 
 #--------VISUALISE/SUMMARY FUNCTIONALITY------------
@@ -232,11 +234,12 @@ def plot_confusion_matrix(cfm, classes, normalise=True, title='Confusion Matrix'
     if normalise:
         cfm = cfm.astype('float')/ cfm.sum(axis=1)[:,np.newaxis]
 
-    ax = sn.heatmap(cfm, annot=True,annot_kws={"size": 16}, cmap=plt.cm.Blues)
+    plt.figure()
+    ax = sn.heatmap(cfm, annot=True,cmap=plt.cm.Blues) #annot_kws={"size": 16} #font size
 
     ax.set_title(title)
     tick_marks = np.arange(len(classes))
-    ax.set_xticklabels(classes)
+    ax.set_xticklabels(classes, rotation=45)
     ax.set_yticklabels(classes)
     ax.set_ylabel('True label')
     ax.set_xlabel('Predicted label')
