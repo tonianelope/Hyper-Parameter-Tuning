@@ -2,13 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from collections import namedtuple
 from dotmap import DotMap
 from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
 from time import time
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm_notebook as tqdm
 #from sklearn import datasets
 from sklearn.datasets import make_classification
-from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_validate
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from skopt import BayesSearchCV
@@ -30,6 +31,8 @@ DEFAULT_COLUMNS = [
 DS_SPLITS = 2
 MAX_ITER = 10
 
+HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
+
 # include below until https://github.com/scikit-optimize/scikit-optimize/issues/718 is resolved
 class BayesSearchCV(BayesSearchCV):
     def _run_search(self, x): raise BaseException('Use newer skopt')
@@ -47,34 +50,34 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
     }
 
     # run outer cross-validation
-    with tqdm(total=DS_SPLITS) as pbar:
-        for train_i, test_i in dataset_folds:
-            X_train, X_test = X[train_i], X[test_i]
-            y_train, y_test = y[train_i], y[test_i]
-
-            start = time()
-            # for each hyperparam setting run inner cv
-            tune_results = hpt_obj.cv(
-                X_train, y_train, model,
-                hpt_obj.param_grid,
-                scoring=loss,
-                **hpt_obj.args.toDict()
-            )
-            duration = time() - start
-
-            data[CV_TIME].append(duration)
-            data[INNER_RES].append(tune_results)
-            data[PARAMS_SAMPLED].append(len(tune_results))
-            # print(tune_results)
-            best_params = sorted(tune_results, key=lambda d: d['loss'])
-            data[STD_TEST_ACC].append(best_params[0]['std'])
-            best_params = best_params[0]['params']
-            data[BEST_PARAMS].append(best_params)
-            # print(best_params)
-            best_model = model(**best_params)
-            best_model.fit(X_train, y_train)
-            data[TEST_ACC].append(metric(y_test, best_model.predict(X_test)))
-            pbar.update(1)
+    #with tqdm(total=DS_SPLITS) as pbar:
+    for train_i, test_i in dataset_folds:
+        X_train, X_test = X[train_i], X[test_i]
+        y_train, y_test = y[train_i], y[test_i]
+        
+        start = time()
+        # for each hyperparam setting run inner cv
+        tune_results = hpt_obj.method(
+            X_train, y_train, model,
+            hpt_obj.param_grid,
+            scoring=loss,
+            **hpt_obj.args
+        )
+        duration = time() - start
+        
+        data[CV_TIME].append(duration)
+        data[INNER_RES].append(tune_results)
+        data[PARAMS_SAMPLED].append(len(tune_results))
+        # print(tune_results)
+        best_params = sorted(tune_results, key=lambda d: d['loss'])
+        data[STD_TEST_ACC].append(best_params[0]['std'])
+        best_params = best_params[0]['params']
+        data[BEST_PARAMS].append(best_params)
+        # print(best_params)
+        best_model = model(**best_params)
+        best_model.fit(X_train, y_train)
+        data[TEST_ACC].append(metric(y_test, best_model.predict(X_test)))
+        #       pbar.update(1)
 
     # get Mean values
     for item in [TEST_ACC, CV_TIME, PARAMS_SAMPLED, STD_TEST_ACC]:
@@ -82,33 +85,73 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
 
     return data
 
-def cmp_hpt_methods(htp_objs, model, dataset, loss, metric, dataset_split=3, name=None):
+def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0):
+    MAX_ITER = max_iter
+    print(MAX_ITER)
     X, y = dataset
-    skf = StratifiedKFold(n_splits=DS_SPLITS, random_state=dataset_split)
+    skf = StratifiedKFold(n_splits=DS_SPLITS, random_state=random_state)
     ds_folds = skf.split(X, y)
 
     htp_results = []
 
 
-    for htp_obj in htp_objs:
-        print("HTP using {}".format(htp_obj.name))
+    for htp_obj in hpt_objs:
+        # print("HTP using {}".format(htp_obj.name))
 
         result = tune_model_cv(X, y, model, htp_obj, loss, metric, skf.split(X,y))
+        result['dataset']=name
         htp_results.append(result)
 
     return htp_results
 
+def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
+    X, y =dataset
+    results = []
+    for (name, param_grid, method, args) in hpt_objs:
+        res = method(X, y, model, param_grid, scoring=loss, verbose=1, **args)
+        best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
+        results.append({
+            'method':name,
+            'data': res,
+            'best_params'
+            'conf_matrix': ,
+            'conf_matrix_normalised':  ,
+        })
+    return results
+
+
 #-----------HYPERTUNE METHODS--------------------
 
-def run_cv(X, y, model, params, scoring, max_iter=MAX_ITER):
-    params = params.toDict() if isinstance(params, DotMap) else params
+def mean_results(results, params):
+    mean = 'mean_'
+    std_ = 'std_'
+    tes = 'test_score'
+    trs = 'train_score'
+    ft = 'fit_time'
+    p = 'params'
+
+    cv_results = {}
+    for label in [tes, trs, ft]:
+        cv_results[mean+label] = results[label].mean()
+        cv_results[std_+label] = results[label].std()
+
+    cv_results[p] = params
+    for k in params:
+        cv_results[p+"_"+k] = params[k]
+    return cv_results
+
+def run_cv(X, y, model, params, scoring, verbose=1, max_iter=MAX_ITER):
     m = model(**params)
-    scores = cross_val_score(m, X, y, scoring=scoring, cv=DS_SPLITS)
-    return {
-        'loss': -1*scores.mean(),
-        'params': params,
-        'std': scores.std(),
-        'status': STATUS_OK}
+    scores = cross_validate(m, X, y, scoring=scoring, cv=DS_SPLITS)
+    scores = mean_results(scores, params)
+    scores['status'] = STATUS_OK
+    scores['loss'] = scores['mean_test_score']
+    return scores
+    # return  {
+    #     'loss': -1*scores.mean(),
+    #     'params': params,
+    #     'std': scores.std(),
+    #     'status': STATUS_OK}
 
 def run_baseline(*args, **kargs):
     return [run_cv(*args, **kargs)]
@@ -122,7 +165,7 @@ def sklearn_search(X, y, s_model):
         'std': s_model.cv_results_['std_test_score']
     }
     # convert obj of lists to list of objs
-    return [dict(zip(obj,t)) for t in zip(*obj.values())]
+    return s_model.cv_results_ #[dict(zip(obj,t)) for t in zip(*obj.values())]
 
 def grid_search(X, y, model, param_grid, **kargs):
     gs = GridSearchCV(model(), param_grid, cv=DS_SPLITS, **kargs)
@@ -136,7 +179,7 @@ def baysian_search(X, y, model, params, **kargs):
     bs = BayesSearchCV(model(), params, cv=DS_SPLITS, **kargs)
     return sklearn_search(X, y, bs)
 
-def tpe_search(X, y, model, param_grid, scoring, max_iter=MAX_ITER):
+def tpe_search(X, y, model, param_grid, scoring, verbose=1, max_iter=MAX_ITER):
     trials = Trials()
     results = fmin(
         fn=lambda param: run_cv(X, y, model, param, scoring),

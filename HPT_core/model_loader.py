@@ -4,8 +4,9 @@ from hyperopt import hp
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
+from skopt.space import Categorical, Real
 
-HPT_Model = namedtuple("HPT_Model", "model param_grid hyperopt_grid bayes_grid")
+HPT_Model = namedtuple("HPT_Model", "model param_grid hyperopt_grid bayes_grid base")
 
 def load_MLPClassifier():
     # hyper parameter names
@@ -34,7 +35,12 @@ def load_MLPClassifier():
         lr_init : Real(lr_space[0], lr_space[-1], 'log-uniform')
     }
 
-    return HPT_Model(MLPClassifier, param_grid, hyperopt_grid, bayes_grid)
+    base = {
+        lr: 'adaptive',
+        lr_init: 0.01
+    }
+
+    return HPT_Model(MLPClassifier, param_grid, hyperopt_grid, bayes_grid, base)
 
 def load_SVC():
     param_grid = {
@@ -55,7 +61,9 @@ def load_SVC():
         'kernel': hp.choice('kernel', ['linear', 'rbf'])
     }
 
-    return HPT_Model(SVC, param_grid, hyperopt_grid, bayes_grid)
+    base = {'kernel':'linear'}
+
+    return HPT_Model(SVC, param_grid, hyperopt_grid, bayes_grid, base)
 
 def load_RandomForestClassifier():
     param_grid = {
@@ -74,13 +82,14 @@ def load_RandomForestClassifier():
         "criterion": hp.choice("criterion",["gini", "entropy"])
     }
 
-    param_grid = {
+    bayes_grid = {
         "max_depth": (3, None),
         "max_features": (1, 10),
         "min_samples_split": (2, 10),
-        "bootstrap": Categorical(True, False),
+        "bootstrap": Categorical([True, False]),
         "criterion": Categorical(["gini", "entropy"])
     }
 
-    return HPT_Model(SVC, param_grid, hyperopt_grid, bayes_grid)
+    base = {}
 
+    return HPT_Model(RandomForestClassifier, param_grid, hyperopt_grid, bayes_grid, base)
