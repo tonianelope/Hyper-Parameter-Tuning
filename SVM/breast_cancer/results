@@ -1,11 +1,13 @@
 *****BREAST CANCER BASELINE, kernel=linear*****
-('accuracy: ', 0.94736842105263153)
-('Precision:', 0.97959183673469385)
-('Recall:', 0.93203883495145634)
+('accuracy: ', 0.9473684210526315)
+('Precision:', 0.9795918367346939)
+('Recall:', 0.9320388349514563)
+('Time: ', 0.7803459167480469)
 *****BREAST CANCER BASELINE, kernel=rbf*****
-('accuracy: ', 0.60233918128654973)
-('Precision:', 0.60233918128654973)
+('accuracy: ', 0.6023391812865497)
+('Precision:', 0.6023391812865497)
 ('Recall:', 1.0)
+('Time: ', 0.023706912994384766)
 *****BREAST CANCER GRID SEARCH*****
 {'kernel': 'linear', 'C': 10, 'gamma': 0.001}
 ('accuracy: ', 0.9707602339181286)
