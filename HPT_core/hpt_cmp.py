@@ -31,8 +31,8 @@ DEFAULT_COLUMNS = [
     HPT_METHOD, MEAN+TEST_ACC, MEAN+STD_TEST_ACC, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED
 ]
 
-DS_SPLITS = 2
-MAX_ITER = 5
+DS_SPLITS = 5
+MAX_ITER = 10
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -119,7 +119,7 @@ def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name
             best_params = res['params'][best_params_index]
             best_model = model(**best_params)
             y_pred = best_model.fit(X_train, y_train).predict(X_test)
-            
+
             results.append({
                 HPT_METHOD : name,
                 INNER_RES : res,
