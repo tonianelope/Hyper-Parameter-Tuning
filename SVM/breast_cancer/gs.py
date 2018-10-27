@@ -1,8 +1,8 @@
 from sklearn import svm
 from sklearn.datasets import load_breast_cancer
 from sklearn import metrics
-from sklearn.cross_validation import train_test_split
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 
 print("*****BREAST CANCER GRID SEARCH*****")
 data = load_breast_cancer()
