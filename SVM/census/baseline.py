@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn import svm
 from sklearn import metrics
+import timeit
 
 #code for importing and pre processing data from https://www.kaggle.com/bananuhbeatdown/multiple-ml-techniques-and-analysis-of-dataset
 #dataset itself a truncated version of dataset from https://www.kaggle.com/uciml/adult-census-income
@@ -21,23 +22,27 @@ data.head()
 X = data[['workclass_num', 'education.num', 'marital_num', 'race_num', 'sex_num', 'rel_num', 'capital.gain', 'capital.loss']]
 y = data.over50K
 
+start = timeit.default_timer()
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=42)
 clf = svm.SVC(kernel='linear')
 clf.fit(X_train, y_train)
 y_pred = clf.predict(X_test);
+stop = timeit.default_timer()
 
 print("*****CENSUS BASELINE DATA, kernel=linear*****")
 print("accuracy: ", metrics.accuracy_score(y_test,y_pred))
 print("Precision:",metrics.precision_score(y_test, y_pred))
 print("Recall:",metrics.recall_score(y_test, y_pred))
-
+print("Time: ", stop - start)
+start = timeit.default_timer()
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=42)
 clf = svm.SVC(kernel='rbf')
 clf.fit(X_train, y_train)
 y_pred = clf.predict(X_test);
+stop = timeit.default_timer()
 
 print("*****CENSUS BASELINE DATA, kernel=rbf*****")
 print("accuracy: ", metrics.accuracy_score(y_test,y_pred))
 print("Precision:",metrics.precision_score(y_test, y_pred))
 print("Recall:",metrics.recall_score(y_test, y_pred))
-
+print("Time: ", stop - start)
