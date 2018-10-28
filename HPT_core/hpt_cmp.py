@@ -33,7 +33,7 @@ DEFAULT_COLUMNS = [
 ]
 
 DS_SPLITS = 3
-MAX_ITER = 5
+MAX_ITER = 30
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -171,7 +171,7 @@ def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name
                 CV_TIME: cv_time,
             }
             results.append(data)
-            with open('acc-{}-{}-{}.json'.format(DS_SPLITS, MAX_ITER, name), 'w') as outfile:
+            with open('{}-{}-{}-{}.json'.format(name, DS_SPLITS, MAX_ITER, m_name), 'w') as outfile:
                 dumped = json.dumps(data, cls=NumpyEncoder)
                 json.dump(data, outfile, default=default)
             pbar.update(1)
