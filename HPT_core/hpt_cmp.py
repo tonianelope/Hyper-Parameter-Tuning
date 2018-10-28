@@ -33,7 +33,7 @@ DEFAULT_COLUMNS = [
 ]
 
 DS_SPLITS = 3
-MAX_ITER = 25
+MAX_ITER = 10
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
