@@ -33,7 +33,7 @@ DEFAULT_COLUMNS = [
 ]
 
 DS_SPLITS = 3
-MAX_ITER = 20
+MAX_ITER = 25
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -201,12 +201,14 @@ def mean_results(results, params):
     return cv_results
 
 def run_cv(X, y, model, params, scoring, max_iter=MAX_ITER):
+    #print(params)
     m = model(**params)
-    scores = cross_validate(m, X, y, scoring=scoring, cv=DS_SPLITS)
+    scores = cross_validate(m, X, y, scoring=scoring, cv=DS_SPLITS, return_train_score=True)
 
     scores = mean_results(scores, params)
     scores['status'] = STATUS_OK
     scores['loss'] = -1* scores['mean_test_score']
+    #print(scores)
     return scores
 
 def run_baseline(*args, **kargs):
