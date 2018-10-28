@@ -5,6 +5,7 @@ from sklearn import svm
 from sklearn import metrics
 import timeit
 
+#default C=1, default kernel=linear
 #code for importing and pre processing data from https://www.kaggle.com/bananuhbeatdown/multiple-ml-techniques-and-analysis-of-dataset
 #dataset itself a truncated version of dataset from https://www.kaggle.com/uciml/adult-census-income
 path = 'census_data.csv'
