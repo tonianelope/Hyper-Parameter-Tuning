@@ -1,6 +1,6 @@
 # Hyper-Parameter-Tuning
 CS4404 Machine Learning: Investigation of Hyper-Parameter Tuning: How strong is the impact on ML performance?
-
+NOte: To ensure that the optimization does not overfit on the selected training set, we used cross-validation (cv split of 3 for our small datasets) on the HPT methods, ensuring the parameters selected generalise well over the complete training set. 
 ## Resources
 
 ### Possible Papers to read
