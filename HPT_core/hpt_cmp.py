@@ -33,7 +33,7 @@ DEFAULT_COLUMNS = [
 ]
 
 DS_SPLITS = 3
-MAX_ITER = 10
+MAX_ITER = 40
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -145,7 +145,7 @@ def get_best_params(res, score):
 
 def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
     X, y =dataset
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
     results = []
     print(MAX_ITER, DS_SPLITS)
 
