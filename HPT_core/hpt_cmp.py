@@ -5,11 +5,9 @@ import seaborn as sn
 import json
 
 from collections import namedtuple
-from dotmap import DotMap
 from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
 from time import time
 from tqdm import tqdm_notebook as tqdm
-#from sklearn import datasets
 from sklearn.datasets import make_classification
 from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_validate, train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
@@ -41,22 +39,42 @@ HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 class BayesSearchCV(BayesSearchCV):
     def _run_search(self, x): raise BaseException('Use newer skopt')
 
-class NumpyEncoder(json.JSONEncoder):
-    """ Special json encoder for numpy types """
-    def default(self, obj):
-        if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
-            np.int16, np.int32, np.int64, np.uint8,
-            np.uint16, np.uint32, np.uint64)):
-            return int(obj)
-        elif isinstance(obj, (np.float_, np.float16, np.float32, 
-            np.float64)):
-            return float(obj)
-        elif isinstance(obj,(np.ndarray,)): #### This is the fix
-            return obj.tolist()
-        else:
-            print("Type: {}, Obj: {}".format(type(obj), obj))
-        return json.JSONEncoder.default(self, obj)
 
+#-------------HELPER FUNCTIONS-----------------------
+'''
+enable json.dump to convert numpy objs
+'''
+def default(obj):
+    if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
+                        np.int16, np.int32, np.int64, np.uint8,
+                        np.uint16, np.uint32, np.uint64)):
+        return int(obj)
+    elif isinstance(obj, (np.float_, np.float16, np.float32,
+                        np.float64)):
+        return float(obj)
+    elif isinstance(obj,(np.ndarray,)): #### This is the fix
+        return obj.tolist()
+    else:
+        print("Type: {}, Obj: {}".format(type(obj), obj))
+    raise TypeError('Not serializable: {} - {}'.format(obj, type(obj)))
+
+'''
+gets the pest parameters, based onthe scoring metric
+'''
+def get_best_params(res, score):
+    argfunc = np.argmin if score == 'loss' else np.argmax
+    try:
+        best_params_index = argfunc(res['mean_test_'+score])
+    except Exception as e:
+        best_params_index = argfunc(res['mean_test_score'])
+    return res['params'][best_params_index]
+
+#-------------COMPARE HPT METHODS WITH DOUBLE CROSS VALIDATION-------------
+# Double cross validation approach based on the following repo (https://github.com/roamanalytics/roamresearch/tree/master/BlogPosts/Hyperparameter_tuning_comparison)
+'''
+Run double cross validation on the hpt_obj.
+Record the Data
+'''
 def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
     data = {
         MODEL : model.__name__,
@@ -103,8 +121,12 @@ def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
 
     return data
 
+'''
+compares the `hpt_objs`, for `model` - using double cross-validation
+scoring the tuning on `loss` and the final results on `metric`
+dataset needs to be a tuple of (X,y)
+'''
 def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0):
-    MAX_ITER = max_iter
     print(MAX_ITER)
     X, y = dataset
     skf = StratifiedKFold(n_splits=DS_SPLITS, random_state=random_state)
@@ -113,36 +135,18 @@ def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_sta
     htp_results = []
 
     for htp_obj in hpt_objs:
-        # print("HTP using {}".format(htp_obj.name))
-
         result = tune_model_cv(X, y, model, htp_obj, loss, metric, skf.split(X,y))
         result['dataset']=name
         htp_results.append(result)
 
     return htp_results
 
-def default(obj):
-    if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
-                        np.int16, np.int32, np.int64, np.uint8,
-                        np.uint16, np.uint32, np.uint64)):
-        return int(obj)
-    elif isinstance(obj, (np.float_, np.float16, np.float32, 
-                        np.float64)):
-        return float(obj)
-    elif isinstance(obj,(np.ndarray,)): #### This is the fix
-        return obj.tolist()
-    else:
-        print("Type: {}, Obj: {}".format(type(obj), obj))
-    raise TypeError('Not serializable: {} - {}'.format(obj, type(obj)))
-
-def get_best_params(res, score):
-    argfunc = np.argmin if score == 'loss' else np.argmax
-    try:
-        best_params_index = argfunc(res['mean_test_'+score])
-    except Exception as e:
-        best_params_index = argfunc(res['mean_test_score'])
-    return res['params'][best_params_index]
-
+#--------------COMPARE HYPERTUNE METHODS (SINGLE CROSS VALIDATION)----------------------
+'''
+compares the `hpt_objs`, for `model` - using double cross-validation
+scoring the tuning on `loss` and the final results on `metric`
+dataset needs to be a tuple of (X,y)
+'''
 def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
     X, y =dataset
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
@@ -171,16 +175,17 @@ def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name
                 CV_TIME: cv_time,
             }
             results.append(data)
+
             with open('{}-{}-{}-{}.json'.format(name, DS_SPLITS, MAX_ITER, m_name), 'w') as outfile:
-                dumped = json.dumps(data, cls=NumpyEncoder)
                 json.dump(data, outfile, default=default)
             pbar.update(1)
 
     return results
 
-
 #-----------HYPERTUNE METHODS--------------------
-
+'''
+compute mean of cv_results
+'''
 def mean_results(results, params):
     mean = 'mean_'
     std_ = 'std_'
@@ -208,7 +213,6 @@ def run_cv(X, y, model, params, scoring, max_iter=MAX_ITER):
     scores = mean_results(scores, params)
     scores['status'] = STATUS_OK
     scores['loss'] = -1* scores['mean_test_score']
-    #print(scores)
     return scores
 
 def run_baseline(*args, **kargs):
@@ -216,15 +220,8 @@ def run_baseline(*args, **kargs):
     return {k: [dic[k] for dic in res] for k in res[0]}
 
 def sklearn_search(X, y, s_model):
-    #s_model = sk_search(model(), param_grid, cv=DS_SPLITS, n_iter=max_iter)
     s_model.fit(X, y)
-    # obj = {
-    #     'loss': np.array(s_model.cv_results_['mean_test_score']),
-    #     'params': s_model.cv_results_['params'],
-    #     'std': s_model.cv_results_['std_test_score']
-    # }
-    # convert obj of lists to list of objs
-    return s_model.cv_results_ #[dict(zip(obj,t)) for t in zip(*obj.values())]
+    return s_model.cv_results_
 
 def grid_search(X, y, model, param_grid, **kargs):
     gs = GridSearchCV(model(), param_grid, cv=DS_SPLITS, **kargs)
@@ -252,16 +249,23 @@ def tpe_search(X, y, model, param_grid, scoring, max_iter=MAX_ITER):
 
 
 #--------VISUALISE/SUMMARY FUNCTIONALITY------------
-
+'''
+transform results into pandas DataFrame
+'''
 def table(results, columns=DEFAULT_COLUMNS):
     df = pd.DataFrame(results)
     df = df[columns] # select columns to return
     return df
-
+'''
+transform a list of results into a list of pandas Dataframes
+'''
 def table_by_ds(all_results, datasets):
     tables = [table(i) for i in all_results]
     return pd.concat(tables, keys=datasets , axis=1)
 
+'''
+plot the value of `val` for all method by dataset
+'''
 def plot_by_ds(val, list_of_results, datasets):
     l = len(datasets)
     y = [i for i in range(l)]
@@ -301,9 +305,6 @@ def plot_confusion_matrix(cfm, classes, normalise=True, title='Confusion Matrix'
     ax.set_ylabel('True label')
     ax.set_xlabel('Predicted label')
 
-
-
-
 '''
 all_results  -> list of dicts, where INNER_RES contains the method trials
 params       -> list of the parameters to plot
@@ -320,7 +321,12 @@ def boxplot_param_distribution(all_results, params, scoring, param_classes=None)
             ax = sn.boxplot(y='param_'+param, x=scoring, data=method[INNER_RES])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
-
+'''
+all_results  -> list of dicts, where INNER_RES contains the method trial
+params       -> list of the parameters to plot
+scoring      -> name of the column to score them by
+param_classes-> dict with lables for parameters
+'''
 def scatterplot_param_distribution(all_results, params, scoring, param_classes=None):
 
     for param in params:
