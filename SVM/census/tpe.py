@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn import svm
-from sklearn import metrics
+from hyperopt import hp, tpe, fmin, STATUS_OK, Trials
+from sklearn.svm import SVC
+from skopt.space import Categorical, Real
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, cross_val_score
 import timeit
 
-#default C=1, default kernel=linear
+#base code from here: https://medium.com/district-data-labs/parameter-tuning-with-hyperopt-faa86acdfdce, changed to fit my own needs
+
 #code for importing and pre processing data from https://www.kaggle.com/bananuhbeatdown/multiple-ml-techniques-and-analysis-of-dataset
 #dataset itself a truncated version of dataset from https://www.kaggle.com/uciml/adult-census-income
 path = 'census_data.csv'
@@ -22,28 +25,24 @@ data['rel_num'] = data.relationship.map({'Not-in-family':0, 'Unmarried':0, 'Own-
 data.head()
 X = data[['workclass_num', 'education.num', 'marital_num', 'race_num', 'sex_num', 'rel_num', 'capital.gain', 'capital.loss']]
 y = data.over50K
-
+X, X_test, y, y_test = train_test_split(X,y,test_size=0.3, random_state=42)
 start = timeit.default_timer()
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=42)
-clf = svm.SVC(kernel='linear')
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test);
-stop = timeit.default_timer()
 
-print("*****CENSUS BASELINE DATA, kernel=linear*****")
-print("accuracy: ", metrics.accuracy_score(y_test,y_pred))
-print("Precision:",metrics.precision_score(y_test, y_pred))
-print("Recall:",metrics.recall_score(y_test, y_pred))
-print("Time: ", stop - start)
-start = timeit.default_timer()
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=42)
-clf = svm.SVC(kernel='rbf')
-clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test);
-stop = timeit.default_timer()
+def hyperopt_train_test(params):
+    clf = SVC(**params)
+    return cross_val_score(clf, X, y).mean()
 
-print("*****CENSUS BASELINE DATA, kernel=rbf*****")
-print("accuracy: ", metrics.accuracy_score(y_test,y_pred))
-print("Precision:",metrics.precision_score(y_test, y_pred))
-print("Recall:",metrics.recall_score(y_test, y_pred))
-print("Time: ", stop - start)
+space4svm = {
+    'C': hp.loguniform('C', np.log(0.001), np.log(100)),
+    'kernel': hp.choice('kernel', ['linear', 'rbf']),
+    'gamma': hp.loguniform('gamma', np.log(0.001), np.log(1)),
+}
+
+def f(params):
+    acc = hyperopt_train_test(params)
+    return {'loss': -acc, 'status': STATUS_OK}
+
+trials = Trials()
+best = fmin(f, space4svm, algo=tpe.suggest, max_evals=10, trials=trials)
+stop = timeit.default_timer()
+print ('best: ', best, ' time: ', stop-start)
