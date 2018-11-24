@@ -6,34 +6,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sn
+from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
                                      StratifiedKFold, cross_val_score,
                                      cross_validate, train_test_split)
-from tqdm import tqdm
-
-from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
 from skopt import BayesSearchCV
+from tqdm import tqdm
 
 MODEL = 'Model'
 HPT_METHOD = 'HPT method'
-TEST_ACC = 'Test accuracy'
+TEST_ACC = 'Test Accuracy'
+TEST_ERR = 'Test Error'
 BEST_PARAMS = 'Best Parameters'
 CV_TIME = 'Cross-val. time (in s)'
 FIT_TIME = 'Fit time'
 PARAMS_SAMPLED = 'Parameters sampled'
-STD_TEST_ACC = 'Std'
+STD_TEST_SCR = 'Std'
 MEAN = 'Mean '
 INNER_RES = 'Inner result'
 CONF_MATRIX = 'Confusion matrix'
 
 DEFAULT_COLUMNS = [
-    HPT_METHOD, MEAN+TEST_ACC, MEAN+STD_TEST_ACC, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED
+    HPT_METHOD, MEAN+TEST_ACC, MEAN+STD_TEST_SCR, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED
 ]
 
 OUT_DIR = '.mlpc_output'
+PLOT_DIR = 'plots'
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -60,17 +61,21 @@ def default(obj):
         print("Type: {}, Obj: {}".format(type(obj), obj))
     raise TypeError('Not serializable: {} - {}'.format(obj, type(obj)))
 
+
 '''
 gets the pest parameters, based onthe scoring metric
 '''
 def get_best_params(res, score):
+    # argfunc = np.argmin if score_type == 'loss' else np.argmax
     score_type = next(iter(score)) if isinstance(score, dict) else 'score'
-    argfunc = np.argmin if score_type == 'loss' else np.argmax
+    argfunc = np.argmax
     try:
         best_params_index = argfunc(res['mean_test_'+score_type])
+        best_score = np.max(res['mean_test_'+score_type])
     except Exception as e:
         best_params_index = argfunc(res['mean_test_score'])
-    return res['params'][best_params_index]
+        best_score = np.max(res['mean_test_score'])
+    return best_params_index, best_score
 
 #-------------COMPARE HPT METHODS WITH DOUBLE CROSS VALIDATION-------------
 # Double cross validation approach based on the following repo (https://github.com/roamanalytics/roamresearch/tree/master/BlogPosts/Hyperparameter_tuning_comparison)
@@ -83,7 +88,8 @@ def tune_model_cv(X, y, model, hpt_obj, score, final_metric, cv, dataset_folds):
         MODEL : model.__name__,
         HPT_METHOD : hpt_obj.name,
         TEST_ACC : [],
-        #STD_TEST_ACC: [],
+        TEST_ERR : [],
+        STD_TEST_SCR: [],
         BEST_PARAMS : [],
         PARAMS_SAMPLED : [],
         CV_TIME : [],
@@ -111,20 +117,22 @@ def tune_model_cv(X, y, model, hpt_obj, score, final_metric, cv, dataset_folds):
             data[INNER_RES].append(tune_results)
             data[PARAMS_SAMPLED].append(len(tune_results))
 
-            best_params = get_best_params(tune_results, score)
-            #data[STD_TEST_ACC].append(best_params)
-            data[BEST_PARAMS].append(best_params)
+            best_params_index, best_score = get_best_params(tune_results, score)
+            data[STD_TEST_SCR].append(best_score)
+            data[BEST_PARAMS].append(tune_results['params'][best_params_index])
 
             best_model = model(**best_params)
             best_model.fit(X_train, y_train)
             y_pred = best_model.predict(X_test)
-            data[TEST_ACC].append(final_metric(y_test, y_pred))
+            acc = final_metric(y_test, y_pred)
+            data[TEST_ACC].append(acc)
+            data[TEST_ERR].append(1-acc)
             data[CONF_MATRIX].append(confusion_matrix(y_test, y_pred))
 
             pbar.update(1)
 
     # get Mean values
-    for item in [TEST_ACC, CV_TIME, PARAMS_SAMPLED]: #STD_TEST_ACC
+    for item in [TEST_ACC, TEST_ERR, CV_TIME, PARAMS_SAMPLED]: #STD_TEST_ACC
         data[MEAN+item] = np.mean(data[item])
 
     return data
@@ -246,9 +254,11 @@ def random_search(X, y, model, param_grid, **kargs):
 
 def baysian_search(X, y, model, params, scoring, **kargs):
     scoring = next(iter(scoring)) if isinstance(scoring, dict) else scoring
-    print(scoring)
     bs = BayesSearchCV(model(), params, **kargs)
-    return sklearn_search(X, y, bs)
+    # TODO undo
+    r = sklearn_search(X, y, bs)
+    print(r)
+    return r
 
 def test_tpe(X,y,model,param,scoring,cv):
     m = model(**param)
@@ -260,12 +270,12 @@ def plot_tpe_res(trials, params):
     f, axes = plt.subplots(nrows=1, ncols=cols, figsize=(15,5))#, figsize=(10,10))
     cmap = plt.cm.jet
     #print(trials.trials[0]['misc']['vals'])
-    for i, key in enumerate(params):  
+    for i, key in enumerate(params):
         xs = [t['misc']['vals'][key] for t in trials.trials]
         ys = [-t['result']['loss'] for t in trials.trials]
 
         #xs, ys = zip(\*sorted(zip(xs, ys)))
-        #ys = np.array(ys)
+        #ys = np.array(ys)w
         if(cols>1):
             axes[i].scatter(xs, ys, s=20, linewidth=0.01, alpha=0.75, c=cmap(float(i)/cols))
             axes[i].set_title(key)
@@ -390,3 +400,23 @@ def scatterplot_param_distribution(all_results, params, scoring, param_classes=N
             ax = sn.scatterplot(x='param_'+param, y=scoring, data=method[INNER_RES], label=method[HPT_METHOD])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
+
+def barplot(x, y, data, textval, xlabel=None, ylabel=None, xtick=[], ytick=[]):
+    fig, ax = plt.subplots()
+    g = sn.barplot(x=x, y=y, data=data, ax=ax)
+
+    for i, val in enumerate(data.iterrows()):
+        px, py = (i, val[1][y]) if x==HPT_METHOD else (val[1][x], i)
+        t = round(float(val[1][textval]),2)
+        g.text(px, py, t, ha='center')
+
+    g.set_ylabel(ylabel)
+    g.set_xlabel(xlabel)
+
+    g.set_yticklabels(ytick)
+    g.set_xticklabels(xtick)
+
+    fig.tight_layout()
+
+def saveplot(path):
+    plt.savefig(path)

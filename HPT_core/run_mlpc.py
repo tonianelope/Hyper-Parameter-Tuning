@@ -1,18 +1,21 @@
+import warnings
+
+import seaborn as sns
+from sklearn import (discriminant_analysis, ensemble, gaussian_process,
+                     linear_model, naive_bayes, neighbors, neural_network, svm,
+                     tree)
+from sklearn.metrics import (accuracy_score, f1_score, log_loss, make_scorer,
+                             recall_score, roc_auc_score)
+from skopt.space import Categorical, Integer, Real
+from tqdm import tnrange, tqdm
+
 import dataset_loader as ds
 import model_loader as mdl
-import seaborn as sns
-
 from hpt_cmp import *
 
-from sklearn import svm, tree, linear_model, neighbors, naive_bayes, ensemble, discriminant_analysis, gaussian_process, neural_network
-from sklearn.metrics import accuracy_score, f1_score,roc_auc_score ,make_scorer, log_loss, recall_score
-from tqdm import tqdm, tnrange
-from skopt.space import Real, Integer, Categorical
-
-import warnings
 warnings.filterwarnings('ignore')
 
-MAX_ITER = 20
+MAX_ITER = 5
 CV_SPLITS = 2
 NAME = "RUN-1-MPLC"
 
@@ -90,7 +93,8 @@ mlpc ={
     'hpt_objs': hpt_objs,
     'score': scoring,
     'final_metric': accuracy_score,
-    'name': NAME
+    'name': NAME,
+    'cv': CV_SPLITS
 }
 
 # RUN COMPARISON
@@ -100,40 +104,29 @@ res = cmp_hpt_methods_double_cv(data, **mlpc)
 # RUN PLOTS
 
 sum_res = []
+cols = [HPT_METHOD, MEAN+CV_TIME, PARAMS_SAMPLED, TEST_ACC, TEST_ERR,'SCORE', BEST_PARAMS,]
 for r in res:
     t = np.array(r[INNER_RES][0]['mean_fit_time']).mean()
     score_label = 'mean_test_loss'
     if r[HPT_METHOD] == 'Bayes Search':
         score_label = 'mean_test_score'
-    sum_res.append((r[HPT_METHOD], r[MEAN+CV_TIME],len(r[INNER_RES][0]['params']), r[MEAN+TEST_ACC], r[BEST_PARAMS], np.array(r[INNER_RES][0][score_label]).mean() ))
+    sum_res.append(
+        (r[HPT_METHOD], r[MEAN+CV_TIME],len(r[INNER_RES][0]['params']),
+         r[MEAN+TEST_ACC], np.array(r[INNER_RES][0][score_label]).mean() , r[BEST_PARAMS] )
+    )
 
-                   
-df = pd.DataFrame(sum_res, columns=[HPT_METHOD, 'TIME', PARAMS_SAMPLED, TEST_ACC, BEST_PARAMS, 'SCORE'])
+df = pd.DataFrame(sum_res, columns=cols)
 
 print('RESULTS:\n')
 print(df)
 
-fig, ax=plt.subplots()
-sns.barplot(x='TIME', y=HPT_METHOD,data =df,ax=ax)
-ax.set_xlabel('Cross-validation time in seconds')
-ax.set_yticklabels(['No HPT','Grid', 'Random', 'Bayes', 'TPE'])
-fig.tight_layout()
-plt.savefig('./plots/{}-TIME'.format(NAME))
+#short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
+short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
 
-plt.figure()
-# plot accuracy comparison
-fig, ax =plt.subplots()
-sns.barplot(y=TEST_ACC, x=HPT_METHOD, ax=ax,data =df)
-ax.set_ylabel('Validation Accuracy')
-ax.set_xticklabels(['No HPT','Grid', 'Random', 'Bayes', 'TPE'])
-fig.tight_layout()
-plt.savefig('./plots/{}-FULLACC'.format(NAME))
+barplot('TIME', HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=CV_TIME, ytick=short_hptm)
+saveplot('./{}/{}-Time'.format(PLOT_DIR, NAME))
 
-fig, ax =plt.subplots()
-ax.set(xlim=(0.5, 1.0))
-sns.barplot(y=TEST_ACC, x=HPT_METHOD, ax=ax,data =df)
-ax.set_ylabel('Validation Accuracy')
-ax.set_xticklabels(['No HPT','Grid', 'Random', 'Bayes', 'TPE'])
-fig.tight_layout()
-plt.savefig('./plots/{}-PARTACC'.format(NAME))
+barplot(HPT_METHOD, TEST_ACC, df, textval=TEST_ACC, ylabel=TEST_ACC, xtick=short_hptm)
+saveplot('./{}/{}-Accuracy'.format(PLOT_DIR, NAME))
 
+# TODO error rate
