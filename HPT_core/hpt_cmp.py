@@ -1,17 +1,20 @@
+import json
+from collections import namedtuple
+from time import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sn
-import json
-
-from collections import namedtuple
-from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
-from time import time
-from tqdm import tqdm_notebook as tqdm
 from sklearn.datasets import make_classification
-from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_validate, train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
+                                     StratifiedKFold, cross_val_score,
+                                     cross_validate, train_test_split)
+from tqdm import tqdm
+
+from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
 from skopt import BayesSearchCV
 
 MODEL = 'Model'
@@ -30,8 +33,7 @@ DEFAULT_COLUMNS = [
     HPT_METHOD, MEAN+TEST_ACC, MEAN+STD_TEST_ACC, MEAN+CV_TIME, MEAN+PARAMS_SAMPLED
 ]
 
-DS_SPLITS = 3
-MAX_ITER = 40
+OUT_DIR = '.mlpc_output'
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -62,9 +64,10 @@ def default(obj):
 gets the pest parameters, based onthe scoring metric
 '''
 def get_best_params(res, score):
-    argfunc = np.argmin if score == 'loss' else np.argmax
+    score_type = next(iter(score)) if isinstance(score, dict) else 'score'
+    argfunc = np.argmin if score_type == 'loss' else np.argmax
     try:
-        best_params_index = argfunc(res['mean_test_'+score])
+        best_params_index = argfunc(res['mean_test_'+score_type])
     except Exception as e:
         best_params_index = argfunc(res['mean_test_score'])
     return res['params'][best_params_index]
@@ -75,90 +78,96 @@ def get_best_params(res, score):
 Run double cross validation on the hpt_obj.
 Record the Data
 '''
-def tune_model_cv(X, y, model, hpt_obj, loss, metric, dataset_folds):
+def tune_model_cv(X, y, model, hpt_obj, score, final_metric, cv, dataset_folds):
     data = {
         MODEL : model.__name__,
         HPT_METHOD : hpt_obj.name,
         TEST_ACC : [],
-        STD_TEST_ACC: [],
+        #STD_TEST_ACC: [],
         BEST_PARAMS : [],
         PARAMS_SAMPLED : [],
         CV_TIME : [],
-        INNER_RES : []
+        INNER_RES : [],
+        CONF_MATRIX : [],
     }
 
+    with tqdm(total=cv, desc='Inner CV') as pbar:
     # run outer cross-validation
-    for train_i, test_i in dataset_folds:
-        X_train, X_test = X[train_i], X[test_i]
-        y_train, y_test = y[train_i], y[test_i]
+        for train_i, test_i in dataset_folds:
+            X_train, X_test = X[train_i], X[test_i]
+            y_train, y_test = y[train_i], y[test_i]
 
-        start = time()
-        # for each hyperparam setting run inner cv
-        tune_results = hpt_obj.method(
-            X_train, y_train, model,
-            hpt_obj.param_grid,
-            scoring=loss,
-            **hpt_obj.args
-        )
-        duration = time() - start
+            start = time()
+            # for each hyperparam setting run inner cv
+            tune_results = hpt_obj.method(
+                X_train, y_train, model,
+                hpt_obj.param_grid,
+                scoring=score,
+                **hpt_obj.args
+            )
+            duration = time() - start
 
-        data[CV_TIME].append(duration)
-        data[INNER_RES].append(tune_results)
-        data[PARAMS_SAMPLED].append(len(tune_results))
+            data[CV_TIME].append(duration)
+            data[INNER_RES].append(tune_results)
+            data[PARAMS_SAMPLED].append(len(tune_results))
 
-        best_params = sorted(tune_results, key=lambda d: d['mean_test_score'])
-        data[STD_TEST_ACC].append(best_params[0]['std'])
-        best_params = best_params[0]['params']
-        data[BEST_PARAMS].append(best_params)
+            best_params = get_best_params(tune_results, score)
+            #data[STD_TEST_ACC].append(best_params)
+            data[BEST_PARAMS].append(best_params)
 
-        best_model = model(**best_params)
-        best_model.fit(X_train, y_train)
-        data[TEST_ACC].append(metric(y_test, best_model.predict(X_test)))
+            best_model = model(**best_params)
+            best_model.fit(X_train, y_train)
+            y_pred = best_model.predict(X_test)
+            data[TEST_ACC].append(final_metric(y_test, y_pred))
+            data[CONF_MATRIX].append(confusion_matrix(y_test, y_pred))
+
+            pbar.update(1)
 
     # get Mean values
-    for item in [TEST_ACC, CV_TIME, PARAMS_SAMPLED, STD_TEST_ACC]:
+    for item in [TEST_ACC, CV_TIME, PARAMS_SAMPLED]: #STD_TEST_ACC
         data[MEAN+item] = np.mean(data[item])
 
     return data
 
 '''
 compares the `hpt_objs`, for `model` - using double cross-validation
-scoring the tuning on `loss` and the final results on `metric`
+scoring the tuning on `score` and the final results on `final_metric`
 dataset needs to be a tuple of (X,y)
 '''
-def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0):
-    print(MAX_ITER)
+def cmp_hpt_methods_double_cv(dataset, hpt_objs, model, score, final_metric, cv=5, random_state=3, name=None):
     X, y = dataset
-    skf = StratifiedKFold(n_splits=DS_SPLITS, random_state=random_state)
-    ds_folds = skf.split(X, y)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=random_state)
+    skf = StratifiedKFold(n_splits=cv, random_state=random_state)
+    ds_folds = skf.split(X_train, y_train)
 
     htp_results = []
 
-    for htp_obj in hpt_objs:
-        result = tune_model_cv(X, y, model, htp_obj, loss, metric, skf.split(X,y))
-        result['dataset']=name
-        htp_results.append(result)
+    with tqdm(total=len(hpt_objs), desc='Outer Loop') as pbar:
+        for htp_obj in hpt_objs:
+            result = tune_model_cv(X, y, model, htp_obj, score, final_metric, cv, skf.split(X,y))
+            htp_results.append(result)
+            with open('./{}/{}-{}.json'.format(OUT_DIR, name, htp_obj.name), 'w') as outfile:
+                json.dump(result, outfile, default=default)
+            pbar.update(1)
 
     return htp_results
 
 #--------------COMPARE HYPERTUNE METHODS (SINGLE CROSS VALIDATION)----------------------
 '''
 compares the `hpt_objs`, for `model` - using double cross-validation
-scoring the tuning on `loss` and the final results on `metric`
+scoring the tuning on `score` and the final results on `final_metric`
 dataset needs to be a tuple of (X,y)
 '''
-def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name=None, max_iter=0, verbose=0):
+def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, max_iter, random_state=3, name=None, verbose=0):
     X, y =dataset
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
     results = []
-    print(MAX_ITER, DS_SPLITS)
 
-    score = next(iter(loss)) if isinstance(loss, dict) else 'score'
     with tqdm(total=len(hpt_objs)) as pbar:
         for (m_name, param_grid, method, args) in hpt_objs:
 
             start = time()
-            res = method(X_train, y_train, model, param_grid, scoring=loss, **args)
+            res = method(X_train, y_train, model, param_grid, scoring=score, **args)
             cv_time = time()-start
 
             best_params =get_best_params(res, score)
@@ -176,7 +185,7 @@ def cmp_hpt_methods(dataset, hpt_objs, model, loss, metric, random_state=3, name
             }
             results.append(data)
 
-            with open('{}-{}-{}-{}.json'.format(name, DS_SPLITS, MAX_ITER, m_name), 'w') as outfile:
+            with open('./{}/{}-{}-{}-{}.json'.format(OUT_DIR, name, m_name), 'w') as outfile:
                 json.dump(data, outfile, default=default)
             pbar.update(1)
 
@@ -205,14 +214,18 @@ def mean_results(results, params):
         cv_results[p+"_"+k] = params[k]
     return cv_results
 
-def run_cv(X, y, model, params, scoring, max_iter=MAX_ITER):
+def run_cv(X, y, model, params, scoring, cv):
     #print(params)
     m = model(**params)
-    scores = cross_validate(m, X, y, scoring=scoring, cv=DS_SPLITS, return_train_score=True)
+    scores = cross_validate(m, X, y, scoring=scoring, cv=cv, return_train_score=True)
 
+    score_lable = 'mean_test_score'
+    if isinstance(scoring, dict):
+        score_lable = 'mean_test_loss'
+    score_type = next(iter(scoring)) if isinstance(scoring, dict) else 'score'
     scores = mean_results(scores, params)
     scores['status'] = STATUS_OK
-    scores['loss'] = -1* scores['mean_test_score']
+    scores['loss'] = -1* scores['mean_test_'+score_type]
     return scores
 
 def run_baseline(*args, **kargs):
@@ -224,27 +237,67 @@ def sklearn_search(X, y, s_model):
     return s_model.cv_results_
 
 def grid_search(X, y, model, param_grid, **kargs):
-    gs = GridSearchCV(model(), param_grid, cv=DS_SPLITS, **kargs)
+    gs = GridSearchCV(model(), param_grid, **kargs)
     return sklearn_search(X, y, gs)
 
 def random_search(X, y, model, param_grid, **kargs):
-    rs = RandomizedSearchCV(model() , param_grid, cv=DS_SPLITS, **kargs)
+    rs = RandomizedSearchCV(model() , param_grid, **kargs)
     return sklearn_search(X, y, rs)
 
 def baysian_search(X, y, model, params, scoring, **kargs):
     scoring = next(iter(scoring)) if isinstance(scoring, dict) else scoring
-    bs = BayesSearchCV(model(), params, cv=DS_SPLITS, **kargs)
+    print(scoring)
+    bs = BayesSearchCV(model(), params, **kargs)
     return sklearn_search(X, y, bs)
 
-def tpe_search(X, y, model, param_grid, scoring, max_iter=MAX_ITER):
+def test_tpe(X,y,model,param,scoring,cv):
+    m = model(**param)
+    err = cross_val_score(m, X, y, scoring=scoring, cv=cv).mean()
+    return {'loss': -err, 'status': STATUS_OK}
+
+def plot_tpe_res(trials, params):
+    cols = len(params)
+    f, axes = plt.subplots(nrows=1, ncols=cols, figsize=(15,5))#, figsize=(10,10))
+    cmap = plt.cm.jet
+    #print(trials.trials[0]['misc']['vals'])
+    for i, key in enumerate(params):  
+        xs = [t['misc']['vals'][key] for t in trials.trials]
+        ys = [-t['result']['loss'] for t in trials.trials]
+
+        #xs, ys = zip(\*sorted(zip(xs, ys)))
+        #ys = np.array(ys)
+        if(cols>1):
+            axes[i].scatter(xs, ys, s=20, linewidth=0.01, alpha=0.75, c=cmap(float(i)/cols))
+            axes[i].set_title(key)
+        else:
+            axes.scatter(xs, ys, s=20, linewidth=0.01, alpha=0.75, c=cmap(float(i)/cols))
+            axes.set_title(key)
+
+        # ax.scatter(xs, ys, s=20, linewidth=0.01, alpha=0.5)
+        # ax.set_title('Iris Dataset - KNN', fontsize=18)
+        # ax.set_xlabel('test', fontsize=12)
+        # ax.set_ylabel('cross validation accuracy', fontsize=12)
+
+def plot_tpe(trials):
+    for t in trials.trials:
+        print(t['result']['loss'])
+
+    f, ax = plt.subplots()
+    xs = [i for i in range(len(trials.trials))]
+    ys = [-t['result']['loss'] for t in trials.trials]
+    sn.lineplot(x=xs, y=ys)
+
+def tpe_search(X, y, model, param_grid, scoring, max_iter, cv):
     trials = Trials()
     results = fmin(
-        fn=lambda param: run_cv(X, y, model, param, scoring),
+        fn=lambda param: run_cv(X, y, model, param, scoring, cv),
         space=param_grid,
         algo=tpe.suggest,
         trials=trials,
         max_evals=max_iter
     )
+    #plot_tpe_res(trials, param_grid)
+    #plot_tpe(trials)
     return {k: [dic[k] for dic in trials.results] for k in trials.results[0]}
 
 
