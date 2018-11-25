@@ -155,8 +155,8 @@ scoring the tuning on `score` and the final results on `final_metric`
 dataset needs to be a tuple of (X,y)
 '''
 def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, random_state=3, name=None, verbose=0):
-    X, y =dataset
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
+    #X, y =dataset
+    X_train, X_test, y_train, y_test = dataset#train_test_split(X, y, test_size=0.2, random_state=random_state)
     results = []
 
     with tqdm(total=len(hpt_objs)) as pbar:

@@ -1,7 +1,7 @@
-import pandas as pd
-import numpy as np
 import os
 
+import numpy as np
+import pandas as pd
 from sklearn.datasets import *
 from sklearn.datasets.base import Bunch
 
@@ -13,6 +13,8 @@ def load(name):
         'census_csv': load_census_50k(),
         'wine': load_wine(),
         'breast_cancer': load_breast_cancer(),
+        'mnist': load_mnist(),
+        'mnist_test': load_mnist_test(),
     }
     return LOAD[name]
 
@@ -49,3 +51,49 @@ def load_census_50k(return_X_y=False):
                  DESCR=None,
                  feature_names=feature_names,
                  filename=path)
+
+def convert(imgf, labelf, outf, n):
+    f = open(imgf, "rb")
+    o = open(outf, "w")
+    l = open(labelf, "rb")
+
+    f.read(16)
+    l.read(8)
+    images = []
+
+    for i in range(n):
+        image = [ord(l.read(1))]
+        for j in range(28*28):
+            image.append(ord(f.read(1)))
+        images.append(image)
+
+    for image in images:
+        o.write(",".join(str(pix) for pix in image)+"\n")
+    f.close()
+    o.close()
+    l.close()
+
+def bunchFile(csv_file):
+    file = open(csv_file)
+    data_train = pd.read_csv(file)
+
+    y= np.array(data_train.iloc[:, 0])
+    X= np.array(data_train.iloc[:, 1:])
+
+    return Bunch(data=X, target = y, DESCR = None, filename = csv_file)
+
+def load_mnist_(imgs, labls, out, n):
+    imgs = os.path.join('./data', imgs)
+    labls = os.path.join('./data', labls)
+    out = os.path.join('./data', out)
+    if not os.path.isfile(out):
+        convert(imgs, labls, out, n)
+    return bunchFile(out)
+
+def load_mnist_test(return_X_y=False):
+    return load_mnist_("t10k-images-idx3-ubyte", "t10k-labels-idx1-ubyte",
+        "mnist_test.csv", 10000)
+
+def load_mnist(return_X_y=False):
+    return load_mnist_("train-images-idx3-ubyte", "train-labels-idx1-ubyte",
+        "mnist_train.csv", 60000)

@@ -8,7 +8,6 @@ from sklearn import (discriminant_analysis, ensemble, gaussian_process,
                      tree)
 from sklearn.metrics import (accuracy_score, f1_score, log_loss, make_scorer,
                              recall_score, roc_auc_score)
-from skopt.space import Categorical, Integer, Real
 from tqdm import tnrange, tqdm
 
 import dataset_loader as ds
@@ -16,6 +15,7 @@ import model_loader as mdl
 from hpt_cmp import *
 from hpt_methods import *
 from plots import *
+from skopt.space import Categorical, Integer, Real
 
 warnings.filterwarnings('ignore')
 
@@ -35,12 +35,14 @@ MAX_ITER = 5
 CV_SPLITS = 2
 
 # LOAD DATA
-dsBunch = ds.load('digits')
-data = (dsBunch.data, dsBunch.target)
+dsBunch = ds.load('mnist')
+dsTest = ds.load('mnist_test')
+data = (dsBunch.data, dsTest.data, dsBunch.target, dsTest.target)
 print('DATA:')
 n_features = dsBunch.data.shape[1]
 shp = dsBunch.data.shape
 print('n_features: {}\nshape: {}\n'.format(n_features, shp))
+
 
 # DEFINE PARAM GRIDS
 d_features = n_features*4
@@ -101,7 +103,7 @@ def def_mlpc(max_iter):
         'acc': make_scorer(accuracy_score),
     }
     #scoring = make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=sorted(np.unique(data[1])))
-    #scoring =  make_scorer(accuracy_score)
+    scoring =  make_scorer(accuracy_score)
 
     mlpc ={
         'model': neural_network.MLPClassifier,
@@ -137,6 +139,15 @@ def plot_res(res):
     print('RESULTS:\n')
     print(df)
 
+    for r in res:
+        plt.figure()
+        x = [i for i in range(len(r[INNER_RES]['std_test_score']))]
+        sns.lineplot(y=r[INNER_RES]['std_test_score'], x=x, label='test '+r[HPT_METHOD])
+        x = [i for i in range(len(r[INNER_RES]['std_train_score']))]
+        sns.lineplot(y=r[INNER_RES]['std_train_score'], x=x, label='train')
+        plt.show()
+        saveplot(r[HPT_METHOD]+'_x')
+
     #short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
     short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
     MEAN= ''
@@ -149,6 +160,9 @@ def plot_res(res):
 
     barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
     saveplot('{}-Error'.format(name))
+
+    param_df = pd.DataFrame()
+
 
 
 # RUN COMPARISON

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sn
 
-from hpt_cmp import HPT_METHOD
+from hpt_cmp import HPT_METHOD, INNER_RES
 
 PLOT_DIR = 'plots'
 
@@ -79,24 +79,34 @@ def boxplot_param_distribution(all_results, params, scoring, param_classes=None)
             ax = sn.boxplot(y='param_'+param, x=scoring, data=method[INNER_RES])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
+
 '''
 all_results  -> list of dicts, where INNER_RES contains the method trial
 params       -> list of the parameters to plot
 scoring      -> name of the column to score them by
 param_classes-> dict with lables for parameters
 '''
-def scatterplot_param_distribution(all_results, params, scoring, param_classes=None):
-
+def scatterplot_param_distribution(list_of_res, params, scoring, param_classes=None):
     for param in params:
         plt.figure()
         # plt.xticks(rotation=45)
-        for method in all_results:
+        for method in list_of_res:
             #pick x n y
-            ax = sn.scatterplot(x='param_'+param, y=scoring, data=method[INNER_RES], label=method[HPT_METHOD])
+            data = method[INNER_RES]
+            x = data['param_'+param]
+            print(param_classes)
+            x = x if not param_classes else [param_classes.index(val) for val in x]
+            print(x)
+            # ax = sn.swarmplot(x='param_'+param, y=scoring, data=method[INNER_RES], label=method[HPT_METHOD])
+            ax = sn.scatterplot(x=x, y=data[scoring], label=method[HPT_METHOD])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
+            if param_classes:
+                ax.set_xticklabels(['']+param_classes, rotation=45)
+            ax.set_title('Distribution of '+param+' by method')
+            saveplot('Distribution of '+param+'by method')
 
-def barplot(x, y, data, textval, xlabel=None, ylabel=None, xtick=[], ytick=[]):
+def barplot(x, y, data, textval, title=None, xlabel=None, ylabel=None, xtick=[], ytick=[]):
     fig, ax = plt.subplots()
     g = sn.barplot(x=x, y=y, data=data, ax=ax)
 
@@ -105,6 +115,7 @@ def barplot(x, y, data, textval, xlabel=None, ylabel=None, xtick=[], ytick=[]):
         t = round(float(val[1][textval]),2)
         g.text(px, py, t, ha='center')
 
+    g.set_title(title)
     g.set_ylabel(ylabel)
     g.set_xlabel(xlabel)
 
