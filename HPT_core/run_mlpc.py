@@ -12,6 +12,8 @@ from tqdm import tnrange, tqdm
 import dataset_loader as ds
 import model_loader as mdl
 from hpt_cmp import *
+from hpt_methods import *
+from plots import *
 
 warnings.filterwarnings('ignore')
 
