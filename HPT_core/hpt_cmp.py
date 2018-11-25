@@ -154,7 +154,7 @@ compares the `hpt_objs`, for `model` - using double cross-validation
 scoring the tuning on `score` and the final results on `final_metric`
 dataset needs to be a tuple of (X,y)
 '''
-def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, max_iter, random_state=3, name=None, verbose=0):
+def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, random_state=3, name=None, verbose=0):
     X, y =dataset
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
     results = []
@@ -166,22 +166,25 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, max_iter, ran
             res = method(X_train, y_train, model, param_grid, scoring=score, **args)
             cv_time = time()-start
 
-            best_params =get_best_params(res, score)
-            best_model = model(**best_params)
+            best_params_index, std_score =get_best_params_meanscore(res, score)
+            best_model = model(**res['params'][best_params_index])
             y_pred = best_model.fit(X_train, y_train).predict(X_test)
 
+            acc = accuracy_score(y_test, y_pred)
             data = {
                 HPT_METHOD : m_name,
                 INNER_RES : res,
-                BEST_PARAMS : best_params,
+                BEST_PARAMS : res['params'][best_params_index],
                 CONF_MATRIX : confusion_matrix(y_test, y_pred),
-                TEST_ACC : accuracy_score(y_test, y_pred),
+                TEST_ACC : acc,
+                TEST_ERR : 1.0-acc,
+                STD_TEST_SCR: std_score,
                 PARAMS_SAMPLED : len(res['params']),
                 CV_TIME: cv_time,
             }
             results.append(data)
 
-            with open('./{}/{}-{}-{}-{}.json'.format(OUT_DIR, name, m_name), 'w') as outfile:
+            with open('./{}/{}-{}.json'.format(OUT_DIR, name, m_name), 'w') as outfile:
                 json.dump(data, outfile, default=default)
             pbar.update(1)
 

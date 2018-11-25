@@ -1,3 +1,5 @@
+import getopt
+import sys
 import warnings
 
 import seaborn as sns
@@ -17,12 +19,23 @@ from plots import *
 
 warnings.filterwarnings('ignore')
 
+
+try:
+    opts, args = getopt.getopt(sys.argv, "n:")
+except getopt.GetoptError:
+    print('run_mlcp.py -n <output_name>')
+    sys.exit(2)
+
+print(type(args[2]))
+
+name = args[2]
+print(name)
+#sys.exit()
 MAX_ITER = 5
 CV_SPLITS = 2
-NAME = "RUN-1-MPLC"
 
 # LOAD DATA
-dsBunch = ds.load('iris')
+dsBunch = ds.load('digits')
 data = (dsBunch.data, dsBunch.target)
 print('DATA:')
 n_features = dsBunch.data.shape[1]
@@ -72,65 +85,76 @@ base = {
     'learning_rate_init': 0.001,
     'random_state':1}
 
-
-# DEFINE MLPClassifier
-hpt_objs = [
+def def_mlpc(max_iter):
+    # DEFINE MLPClassifier
+    hpt_objs = [
         HPT_OBJ('Baseline', base, run_baseline, {'cv':CV_SPLITS}),
-#        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
-        HPT_OBJ('Random Search', pg, random_search, {'n_iter': MAX_ITER, 'cv':CV_SPLITS, 'refit':'loss'}),
-        HPT_OBJ('Bayes Search', bg, baysian_search, {'n_iter':MAX_ITER, 'cv':CV_SPLITS}),
-        HPT_OBJ('Tree of Parzen Est.', hg, tpe_search, {'cv':CV_SPLITS, 'max_iter': MAX_ITER}),
-]
+        #HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
+        HPT_OBJ('Random Search', pg, random_search, {'n_iter': max_iter, 'cv':CV_SPLITS, 'refit':'loss'}),
+        HPT_OBJ('Bayes Search', bg, baysian_search, {'n_iter':max_iter, 'cv':CV_SPLITS}),
+        HPT_OBJ('Tree of Parzen Est.', hg, tpe_search, {'cv':CV_SPLITS, 'max_iter': max_iter}),
+    ]
 
 
-scoring = {
-    'loss': make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=dsBunch.target),
-    'acc': make_scorer(accuracy_score),
-}
-#scoring = make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=sorted(np.unique(data[1])))
-#scoring =  make_scorer(accuracy_score)
+    scoring = {
+        'loss': make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=dsBunch.target),
+        'acc': make_scorer(accuracy_score),
+    }
+    #scoring = make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=sorted(np.unique(data[1])))
+    #scoring =  make_scorer(accuracy_score)
 
-mlpc ={
-    'model': neural_network.MLPClassifier,
-    'hpt_objs': hpt_objs,
-    'score': scoring,
-    'final_metric': accuracy_score,
-    'name': NAME,
-    'cv': CV_SPLITS
-}
+    mlpc ={
+        'model': neural_network.MLPClassifier,
+        'hpt_objs': hpt_objs,
+        'score': scoring,
+        'final_metric': accuracy_score,
+        'name': '{}_{}'.format(name,max_iter),
+        'random_state': 1,
+        #    'cv': CV_SPLITS
+    }
 
-# RUN COMPARISON
-print('RUNNING COMPARISON')
-res = cmp_hpt_methods_double_cv(data, **mlpc)
-#res = cmp_hpt_methods(data, **mplc)
+    res = cmp_hpt_methods(data, **mlpc)
+    return res
 
 # RUN PLOTS
+def plot_res(res):
+    sum_res = []
+    #cols = [HPT_METHOD, MEAN+CV_TIME, PARAMS_SAMPLED, MEAN+TEST_ACC, MEAN+TEST_ERR, STD_TEST_SCR, BEST_PARAMS]
+    cols = [HPT_METHOD, CV_TIME, PARAMS_SAMPLED, TEST_ACC, TEST_ERR, STD_TEST_SCR, BEST_PARAMS]
 
-sum_res = []
-cols = [HPT_METHOD, MEAN+CV_TIME, PARAMS_SAMPLED, MEAN+TEST_ACC, MEAN+TEST_ERR, STD_TEST_SCR, BEST_PARAMS]
-for r in res:
-    row = []
-    for c in cols:
-        if isinstance(r[c], list):
-            row.append(r[c][0])
-        else:
-            row.append(r[c])
-    sum_res.append(row)
+    for r in res:
+        row = []
+        for c in cols:
+            if isinstance(r[c], list):
+                row.append(r[c][0])
+            else:
+                row.append(r[c])
+        sum_res.append(row)
 
-df = pd.DataFrame(sum_res, columns=cols)
-df.to_csv('./plots/'+NAME+'-data.csv')
+    df = pd.DataFrame(sum_res, columns=cols)
+    df.to_csv('./plots/'+name+'-data.csv')
 
-print('RESULTS:\n')
-print(df)
+    print('RESULTS:\n')
+    print(df)
 
-#short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
-short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
+    #short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
+    short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
+    MEAN= ''
 
-barplot(MEAN+CV_TIME, HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=MEAN+CV_TIME, ytick=short_hptm)
-saveplot(NAME+'-Time')
+    barplot(MEAN+CV_TIME, HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=MEAN+CV_TIME, ytick=short_hptm)
+    saveplot('{}-Time'.format(name))
 
-barplot(HPT_METHOD, MEAN+TEST_ACC, df, textval=MEAN+TEST_ACC, ylabel=MEAN+TEST_ACC, xtick=short_hptm)
-saveplot(NAME+'-Accuracy')
+    barplot(HPT_METHOD, MEAN+TEST_ACC, df, textval=MEAN+TEST_ACC, ylabel=MEAN+TEST_ACC, xtick=short_hptm)
+    saveplot('{}-Accuracy'.format(name))
 
-barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
-saveplot(NAME+'-Error')
+    barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
+    saveplot('{}-Error'.format(name))
+
+
+# RUN COMPARISON
+
+print('RUNNING COMPARISON')
+#res = cmp_hpt_methods_double_cv(data, **mlpc)
+for i in range(5, 6, 5):
+    res = def_mlpc(i)
+    plot_res(res)
