@@ -43,7 +43,7 @@ def run_cv(X, y, model, params, scoring, cv):
     score_type = next(iter(scoring)) if isinstance(scoring, dict) else 'score'
     scores = mean_results(scores, params)
     scores['status'] = STATUS_OK
-    scores['loss'] = -1* scores['mean_test_'+score_type]
+    scores['loss'] = 1-scores['mean_test_'+score_type]
     return scores
 
 def run_baseline(*args, **kargs):

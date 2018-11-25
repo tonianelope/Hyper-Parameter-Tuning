@@ -76,7 +76,7 @@ base = {
 # DEFINE MLPClassifier
 hpt_objs = [
         HPT_OBJ('Baseline', base, run_baseline, {'cv':CV_SPLITS}),
-        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
+#        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Random Search', pg, random_search, {'n_iter': MAX_ITER, 'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Bayes Search', bg, baysian_search, {'n_iter':MAX_ITER, 'cv':CV_SPLITS}),
         HPT_OBJ('Tree of Parzen Est.', hg, tpe_search, {'cv':CV_SPLITS, 'max_iter': MAX_ITER}),
@@ -102,22 +102,23 @@ mlpc ={
 # RUN COMPARISON
 print('RUNNING COMPARISON')
 res = cmp_hpt_methods_double_cv(data, **mlpc)
+#res = cmp_hpt_methods(data, **mplc)
 
 # RUN PLOTS
 
 sum_res = []
-cols = [HPT_METHOD, MEAN+CV_TIME, PARAMS_SAMPLED, TEST_ACC, TEST_ERR,'SCORE', BEST_PARAMS,]
+cols = [HPT_METHOD, MEAN+CV_TIME, PARAMS_SAMPLED, MEAN+TEST_ACC, MEAN+TEST_ERR, STD_TEST_SCR, BEST_PARAMS]
 for r in res:
-    t = np.array(r[INNER_RES][0]['mean_fit_time']).mean()
-    score_label = 'mean_test_loss'
-    if r[HPT_METHOD] == 'Bayes Search':
-        score_label = 'mean_test_score'
-    sum_res.append(
-        (r[HPT_METHOD], r[MEAN+CV_TIME],len(r[INNER_RES][0]['params']),
-         r[MEAN+TEST_ACC], np.array(r[INNER_RES][0][score_label]).mean() , r[BEST_PARAMS] )
-    )
+    row = []
+    for c in cols:
+        if isinstance(r[c], list):
+            row.append(r[c][0])
+        else:
+            row.append(r[c])
+    sum_res.append(row)
 
 df = pd.DataFrame(sum_res, columns=cols)
+df.to_csv('./plots/'+NAME+'-data.csv')
 
 print('RESULTS:\n')
 print(df)
@@ -125,10 +126,11 @@ print(df)
 #short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
 short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
 
-barplot('TIME', HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=CV_TIME, ytick=short_hptm)
-saveplot('./{}/{}-Time'.format(PLOT_DIR, NAME))
+barplot(MEAN+CV_TIME, HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=MEAN+CV_TIME, ytick=short_hptm)
+saveplot(NAME+'-Time')
 
-barplot(HPT_METHOD, TEST_ACC, df, textval=TEST_ACC, ylabel=TEST_ACC, xtick=short_hptm)
-saveplot('./{}/{}-Accuracy'.format(PLOT_DIR, NAME))
+barplot(HPT_METHOD, MEAN+TEST_ACC, df, textval=MEAN+TEST_ACC, ylabel=MEAN+TEST_ACC, xtick=short_hptm)
+saveplot(NAME+'-Accuracy')
 
-# TODO error rate
+barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
+saveplot(NAME+'-Error')
