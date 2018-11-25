@@ -26,10 +26,12 @@ except getopt.GetoptError:
     print('run_mlcp.py -n <output_name>')
     sys.exit(2)
 
-print(type(args[2]))
-
 name = args[2]
+i_start = int(args[3])
+i_end = int(args[4])
+i_step = int(args[5])
 print(name)
+print(i_start, i_end, i_step)
 #sys.exit()
 MAX_ITER = 5
 CV_SPLITS = 2
@@ -48,7 +50,7 @@ print('n_features: {}\nshape: {}\n'.format(n_features, shp))
 d_features = n_features*4
 hls = [(d_features,)*5, (n_features,)*5, (d_features,)*2, (n_features,)*2, (d_features,), (n_features),]
 alpha = [0.0001, 0.001, 0.01, 0.1]
-lr = ['adaptive'] #,'constant','invscaling']
+lr = ['adaptive','constant','invscaling']
 lr_init = [0.00001, 0.0001, 0.001, 0.01, 0.1]
 rs = [1]
 
@@ -91,7 +93,7 @@ def def_mlpc(max_iter):
     # DEFINE MLPClassifier
     hpt_objs = [
         HPT_OBJ('Baseline', base, run_baseline, {'cv':CV_SPLITS}),
-        #HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
+        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Random Search', pg, random_search, {'n_iter': max_iter, 'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Bayes Search', bg, baysian_search, {'n_iter':max_iter, 'cv':CV_SPLITS}),
         HPT_OBJ('Tree of Parzen Est.', hg, tpe_search, {'cv':CV_SPLITS, 'max_iter': max_iter}),
@@ -161,14 +163,16 @@ def plot_res(res):
     barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
     saveplot('{}-Error'.format(name))
 
-    param_df = pd.DataFrame()
 
-
+    params = ['alpha', 'learning_rate_init']
+    scatterplot_param_distribution(res, params, 'mean_test_score')
+    scatterplot_param_distribution(res, ['hidden_layer_sizes'], 'mean_test_score', hls)
+    scatterplot_param_distribution(res, ['learning_rate'], 'mean_test_score', ls)
 
 # RUN COMPARISON
 
 print('RUNNING COMPARISON')
 #res = cmp_hpt_methods_double_cv(data, **mlpc)
-for i in range(5, 6, 5):
+for i in range(i_start, i_end, i_setp):
     res = def_mlpc(i)
     plot_res(res)
