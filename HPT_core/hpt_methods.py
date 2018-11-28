@@ -65,10 +65,7 @@ def random_search(X, y, model, param_grid, **kargs):
 def baysian_search(X, y, model, params, scoring, **kargs):
     scoring = next(iter(scoring)) if isinstance(scoring, dict) else scoring
     bs = BayesSearchCV(model(), params, **kargs)
-    # TODO undo
-    r = sklearn_search(X, y, bs)
-    print(r)
-    return r
+    return sklearn_search(X, y, bs)
 
 def tpe_search(X, y, model, param_grid, scoring, max_iter, cv):
     trials = Trials()
@@ -79,6 +76,4 @@ def tpe_search(X, y, model, param_grid, scoring, max_iter, cv):
         trials=trials,
         max_evals=max_iter
     )
-    #plot_tpe_res(trials, param_grid)
-    #plot_tpe(trials)
     return {k: [dic[k] for dic in trials.results] for k in trials.results[0]}

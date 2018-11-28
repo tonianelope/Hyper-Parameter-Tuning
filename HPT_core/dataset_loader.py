@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.datasets import *
 from sklearn.datasets.base import Bunch
 
+mnist_rot_file_base = 'mnist_all_background_images_rotation_normalized_'
 
 def load(name):
     LOAD = {
@@ -15,6 +16,8 @@ def load(name):
         'breast_cancer': load_breast_cancer(),
         'mnist': load_mnist(),
         'mnist_test': load_mnist_test(),
+        'mnist-rot': load_mnist_rot(),
+        'mnist-rot-test': load_mnist_rot_test(),
     }
     return LOAD[name]
 
@@ -97,3 +100,33 @@ def load_mnist_test(return_X_y=False):
 def load_mnist(return_X_y=False):
     return load_mnist_("train-images-idx3-ubyte", "train-labels-idx1-ubyte",
         "mnist_train.csv", 60000)
+
+def mnist_rot_to_csv(csv_name, t):
+    file = os.path.join('./data', mnist_rot_file_base+t+".amat")
+
+    df = pd.read_csv(file, sep='\s+', header=None)
+    df.to_csv(csv_name, header=None)
+
+def load_mnist_rot_test():
+    csv_file = "./data/mnist-rot-test.csv"
+    if not os.path.isfile(csv_file):
+        mnist_rot_to_csv(csv_file, 'test')
+    file = open(csv_file)
+    data_train = pd.read_csv(file)
+
+    y= np.array(data_train.iloc[:100, 785])
+    X= np.array(data_train.iloc[:100, :784])
+
+    return Bunch(data=X, target = y, DESCR = None, filename = csv_file)
+
+def load_mnist_rot():
+    csv_file = "./data/mnist-rot.csv"
+    if not os.path.isfile(csv_file):
+        mnist_rot_to_csv(csv_file, 'train_valid')
+    file = open(csv_file)
+    data_train = pd.read_csv(file)
+
+    y= np.array(data_train.iloc[:100, 785])
+    X= np.array(data_train.iloc[:100, :784])
+
+    return Bunch(data=X, target = y, DESCR = None, filename = csv_file)

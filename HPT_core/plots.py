@@ -94,17 +94,14 @@ def scatterplot_param_distribution(list_of_res, params, scoring, param_classes=N
             #pick x n y
             data = method[INNER_RES]
             x = data['param_'+param]
-            print(param_classes)
             x = x if not param_classes else [param_classes.index(val) for val in x]
-            print(x)
-            # ax = sn.swarmplot(x='param_'+param, y=scoring, data=method[INNER_RES], label=method[HPT_METHOD])
             ax = sn.scatterplot(x=x, y=data[scoring], label=method[HPT_METHOD])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
             if param_classes:
                 ax.set_xticklabels(['']+param_classes, rotation=45)
             ax.set_title('Distribution of '+param+' by method')
-            saveplot('Distribution of '+param+'by method')
+            saveplot('Distribution of '+param+'by method.png')
 
 def barplot(x, y, data, textval, title=None, xlabel=None, ylabel=None, xtick=[], ytick=[]):
     fig, ax = plt.subplots()
@@ -159,8 +156,8 @@ def plot_tpe_res(trials, params):
         # ax.set_ylabel('cross validation accuracy', fontsize=12)
 
 def plot_tpe(trials):
-    for t in trials.trials:
-        print(t['result']['loss'])
+    #for t in trials.trials:
+        #print(t['result']['loss'])
 
     f, ax = plt.subplots()
     xs = [i for i in range(len(trials.trials))]

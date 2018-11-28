@@ -8,6 +8,7 @@ from sklearn import (discriminant_analysis, ensemble, gaussian_process,
                      tree)
 from sklearn.metrics import (accuracy_score, f1_score, log_loss, make_scorer,
                              recall_score, roc_auc_score)
+from skopt.space import Categorical, Integer, Real
 from tqdm import tnrange, tqdm
 
 import dataset_loader as ds
@@ -15,9 +16,8 @@ import model_loader as mdl
 from hpt_cmp import *
 from hpt_methods import *
 from plots import *
-from skopt.space import Categorical, Integer, Real
 
-warnings.filterwarnings('ignore')
+#warnings.filterwarnings('ignore')
 
 
 try:
@@ -31,24 +31,30 @@ i_start = int(args[3])
 i_end = int(args[4])
 i_step = int(args[5])
 print(name)
-print(i_start, i_end, i_step)
+print(i_start,'-', i_end, i_step)
 #sys.exit()
-MAX_ITER = 5
+
 CV_SPLITS = 2
 
 # LOAD DATA
-dsBunch = ds.load('mnist')
-dsTest = ds.load('mnist_test')
+# dsBunch = ds.load('mnist-rot')
+# data = train_test_split(dsBunch.data, dsBunch.target, test_size=0.25, random_state=1)
+
+dsBunch = ds.load('mnist-rot')
+dsTest = ds.load('mnist-rot-test')
 data = (dsBunch.data, dsTest.data, dsBunch.target, dsTest.target)
 print('DATA:')
 n_features = dsBunch.data.shape[1]
 shp = dsBunch.data.shape
+print(pd.DataFrame(dsTest.data).head)
+print()
+print(pd.DataFrame(dsTest.target).head)
 print('n_features: {}\nshape: {}\n'.format(n_features, shp))
 
 
 # DEFINE PARAM GRIDS
 d_features = n_features*4
-hls = [(d_features,)*5, (n_features,)*5, (d_features,)*2, (n_features,)*2, (d_features,), (n_features),]
+hls = [(d_features,)*5, (n_features,)*5, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
 alpha = [0.0001, 0.001, 0.01, 0.1]
 lr = ['adaptive','constant','invscaling']
 lr_init = [0.00001, 0.0001, 0.001, 0.01, 0.1]
@@ -93,7 +99,7 @@ def def_mlpc(max_iter):
     # DEFINE MLPClassifier
     hpt_objs = [
         HPT_OBJ('Baseline', base, run_baseline, {'cv':CV_SPLITS}),
-        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
+#        HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Random Search', pg, random_search, {'n_iter': max_iter, 'cv':CV_SPLITS, 'refit':'loss'}),
         HPT_OBJ('Bayes Search', bg, baysian_search, {'n_iter':max_iter, 'cv':CV_SPLITS}),
         HPT_OBJ('Tree of Parzen Est.', hg, tpe_search, {'cv':CV_SPLITS, 'max_iter': max_iter}),
@@ -148,31 +154,31 @@ def plot_res(res):
         x = [i for i in range(len(r[INNER_RES]['std_train_score']))]
         sns.lineplot(y=r[INNER_RES]['std_train_score'], x=x, label='train')
         plt.show()
-        saveplot(r[HPT_METHOD]+'_x')
+        saveplot('{}_x.png'.format(r[HPT_METHOD]))
 
     #short_hptm = ['No HPT','Grid', 'Random', 'Bayes', 'TPE']
     short_hptm = ['No HPT','Random', 'Bayes', 'TPE']
     MEAN= ''
 
     barplot(MEAN+CV_TIME, HPT_METHOD, df, textval=MEAN+CV_TIME, xlabel=MEAN+CV_TIME, ytick=short_hptm)
-    saveplot('{}-Time'.format(name))
+    saveplot('{}-Time.png'.format(name))
 
     barplot(HPT_METHOD, MEAN+TEST_ACC, df, textval=MEAN+TEST_ACC, ylabel=MEAN+TEST_ACC, xtick=short_hptm)
-    saveplot('{}-Accuracy'.format(name))
+    saveplot('{}-Accuracy.png'.format(name))
 
     barplot(HPT_METHOD, MEAN+TEST_ERR, df, textval=MEAN+TEST_ERR, ylabel=MEAN+TEST_ERR, xtick=short_hptm)
-    saveplot('{}-Error'.format(name))
+    saveplot('{}-Error.png'.format(name))
 
 
     params = ['alpha', 'learning_rate_init']
     scatterplot_param_distribution(res, params, 'mean_test_score')
     scatterplot_param_distribution(res, ['hidden_layer_sizes'], 'mean_test_score', hls)
-    scatterplot_param_distribution(res, ['learning_rate'], 'mean_test_score', ls)
+    scatterplot_param_distribution(res, ['learning_rate'], 'mean_test_score', lr)
 
 # RUN COMPARISON
 
 print('RUNNING COMPARISON')
 #res = cmp_hpt_methods_double_cv(data, **mlpc)
-for i in range(i_start, i_end, i_setp):
+for i in range(i_start, i_end, i_step):
     res = def_mlpc(i)
     plot_res(res)
