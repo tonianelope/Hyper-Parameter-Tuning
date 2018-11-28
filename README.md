@@ -18,6 +18,11 @@ Recommender Systems](http://socialcomputing.know-center.tugraz.at/rs-bda/papers/
 * [A Disciplined Approach to NN Hyperparameters - 2018](https://arxiv.org/pdf/1803.09820.pdf)
 * [List of papers by Algorithm - 2018](https://github.com/hibayesian/awesome-automl-papers#hyperparameter-optimization)
 
+### Dataset 
+[Mnist](http://yann.lecun.com/exdb/mnist/) download the files by running the following comand in your 'data' folder
+```shell
+wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+```
 
 ### Frameworks/Libraries
 
