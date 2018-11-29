@@ -40,8 +40,8 @@ CV_SPLITS = 2
 # dsBunch = ds.load('mnist-rot')
 # data = train_test_split(dsBunch.data, dsBunch.target, test_size=0.25, random_state=1)
 
-dsBunch = ds.load('mnist-rot')
-dsTest = ds.load('mnist-rot-test')
+dsBunch = ds.load_mnist_back()
+dsTest = ds.load_mnist_back_test()
 data = (dsBunch.data, dsTest.data, dsBunch.target, dsTest.target)
 print('DATA:')
 n_features = dsBunch.data.shape[1]

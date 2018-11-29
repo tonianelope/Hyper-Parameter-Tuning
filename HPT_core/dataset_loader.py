@@ -6,6 +6,8 @@ from sklearn.datasets import *
 from sklearn.datasets.base import Bunch
 
 mnist_rot_file_base = 'mnist_all_background_images_rotation_normalized_'
+mnist_back_file_base = 'mnist_background_images_'
+
 
 def load(name):
     LOAD = {
@@ -101,8 +103,8 @@ def load_mnist(return_X_y=False):
     return load_mnist_("train-images-idx3-ubyte", "train-labels-idx1-ubyte",
         "mnist_train.csv", 60000)
 
-def mnist_rot_to_csv(csv_name, t):
-    file = os.path.join('./data', mnist_rot_file_base+t+".amat")
+def mnist_rot_to_csv(csv_name, base, t):
+    file = os.path.join('./data', base+t+".amat")
 
     df = pd.read_csv(file, sep='\s+', header=None)
     df.to_csv(csv_name, header=None)
@@ -110,7 +112,7 @@ def mnist_rot_to_csv(csv_name, t):
 def load_mnist_rot_test():
     csv_file = "./data/mnist-rot-test.csv"
     if not os.path.isfile(csv_file):
-        mnist_rot_to_csv(csv_file, 'test')
+        mnist_rot_to_csv(csv_file, mnist_rot_file_base,'test')
     file = open(csv_file)
     data_train = pd.read_csv(file)
 
@@ -122,7 +124,31 @@ def load_mnist_rot_test():
 def load_mnist_rot():
     csv_file = "./data/mnist-rot.csv"
     if not os.path.isfile(csv_file):
-        mnist_rot_to_csv(csv_file, 'train_valid')
+        mnist_rot_to_csv(csv_file, mnist_rot_file_base,'train_valid')
+    file = open(csv_file)
+    data_train = pd.read_csv(file)
+
+    y= np.array(data_train.iloc[:100, 785])
+    X= np.array(data_train.iloc[:100, :784])
+
+    return Bunch(data=X, target = y, DESCR = None, filename = csv_file)
+
+def load_mnist_back_test():
+    csv_file = "./data/mnist-back-test.csv"
+    if not os.path.isfile(csv_file):
+        mnist_rot_to_csv(csv_file, mnist_back_file_base, 'test')
+    file = open(csv_file)
+    data_train = pd.read_csv(file)
+
+    y= np.array(data_train.iloc[:100, 785])
+    X= np.array(data_train.iloc[:100, :784])
+
+    return Bunch(data=X, target = y, DESCR = None, filename = csv_file)
+
+def load_mnist_back():
+    csv_file = "./data/mnist-back.csv"
+    if not os.path.isfile(csv_file):
+        mnist_rot_to_csv(csv_file, mnist_back_file_base, 'train')
     file = open(csv_file)
     data_train = pd.read_csv(file)
 
