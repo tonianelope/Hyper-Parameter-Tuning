@@ -5,8 +5,9 @@ import pandas as pd
 from sklearn.datasets import *
 from sklearn.datasets.base import Bunch
 
-mnist_rot_file_base = 'mnist_all_background_images_rotation_normalized_'
+mnist_rot_file_base = 'mnist_all_rotation_normalized_float_'# 'mnist_all_background_images_rotation_normalized_'
 mnist_back_file_base = 'mnist_background_images_'
+#mnist_back_file_base = 'mnist_background_random_'
 
 
 def load(name):

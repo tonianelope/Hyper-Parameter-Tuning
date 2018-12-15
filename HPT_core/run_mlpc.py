@@ -4,8 +4,8 @@ import warnings
 
 import seaborn as sns
 from sklearn import (discriminant_analysis, ensemble, gaussian_process,
-                     linear_model, naive_bayes, neighbors, neural_network, svm,
-                     tree)
+                     linear_model, naive_bayes, neighbors, neural_network,
+                     preprocessing, svm, tree)
 from sklearn.metrics import (accuracy_score, f1_score, log_loss, make_scorer,
                              recall_score, roc_auc_score)
 from tqdm import tnrange, tqdm
@@ -44,7 +44,8 @@ CV_SPLITS = 2
 
 dsBunch = ds.load_mnist_back()
 dsTest = ds.load_mnist_back_test()
-data = (dsBunch.data, dsTest.data, dsBunch.target, dsTest.target)
+
+data = (preprocessing.scale(dsBunch.data), dsTest.data, dsBunch.target, dsTest.target)
 # #print('DATA:')
 n_features = dsBunch.data.shape[1]
 shp = dsBunch.data.shape
@@ -55,11 +56,12 @@ shp = dsBunch.data.shape
 
 
 # DEFINE PARAM GRIDS
-d_features = n_features*0.5
-hls = [(d_features,)*4, (n_features,)*4, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
+d_features = n_features//2
+hls = [(d_features,)*3, (n_features,)*3, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
 alpha = [0.0001, 0.001, 0.01, 0.1]
-lr = ['adaptive','constant','invscaling']
-lr_init = [0.00001, 0.0001, 0.001, 0.01, 0.1]
+lr_init = [0.0001, 0.001, 0.01, 0.1, 1]
+lr = ['adaptive']
+solver = ['adam', 'sgd']
 rs = [1]
 
 # sklean paramgrid
@@ -68,7 +70,8 @@ pg = {
     'alpha': alpha,
     'learning_rate': lr,
     'learning_rate_init': lr_init,
-    'random_state': rs
+    'random_state': rs,
+    'solver': solver
 }
 
 # hyperopt paramgird
@@ -77,25 +80,29 @@ hg={
     'alpha': hp.loguniform('alpha', np.log(alpha[0]), np.log(alpha[-1])),
     'learning_rate': hp.choice('learning_rate',lr),
     'learning_rate_init': hp.loguniform('learning_rate_init', np.log(lr_init[0]),np.log(lr_init[-1])),
-    'random_state': hp.choice('random_state', rs)
+    'random_state': hp.choice('random_state', rs),
+    'solver': hp.choice('solver',solver)
 }
 
-# skopt paramgrid 
+# skopt paramgrid
 bg = {
     'hidden_layer_sizes': Categorical(hls),
     'alpha': Real(alpha[0], alpha[-1], 'loguniform'),
     'learning_rate': Categorical(lr),
     'learning_rate_init': Real(lr_init[0],lr_init[-1], 'logunifrom'),
-    'random_state': rs
+    'random_state': rs,
+    'solver': Categorical(solver)
 }
 
 # base model parameters
 base = {
-    'hidden_layer_sizes':(n_features,), 
+    'hidden_layer_sizes':(n_features,),
     'alpha':0.001,
     'learning_rate': lr[0],
     'learning_rate_init': 0.001,
-    'random_state':1}
+    'random_state':1,
+    'solver' : solver[0]
+}
 
 
 # RUN COMPARISON

@@ -28,6 +28,7 @@ ITER_DATA = 'Iteration data'
 
 OUT_DIR = 'output'
 
+BASE = 'Baseline'
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
 
@@ -176,7 +177,8 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, iters, random
                 CV_TIME: cv_time,
             }
 
-            for i in iters:
+            n_iters = [1] if m_name == BASE else iters
+            for i in n_iters:
 
                 best_params_index, std_score = get_best_params_meanscore(res, score, i)
                 best_model = model(**res['params'][best_params_index])
@@ -191,7 +193,7 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, iters, random
                     TEST_ACC : acc,
                     TEST_ERR : 1.0-acc,
                     STD_TEST_SCR : std_score,
-                    PARAMS_SAMPLED : i,
+                    PARAMS_SAMPLED : len(res['params'][:i]),
                 }
                 )
 
