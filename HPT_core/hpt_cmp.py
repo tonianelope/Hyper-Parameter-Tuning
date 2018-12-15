@@ -23,8 +23,10 @@ STD_TEST_SCR = 'Std test score'
 MEAN = 'Mean '
 INNER_RES = 'Inner result'
 CONF_MATRIX = 'Confusion matrix'
+ITER = 'Iteration'
+ITER_DATA = 'Iteration data'
 
-OUT_DIR = '.mlpc_output'
+OUT_DIR = 'output'
 
 
 HPT_OBJ = namedtuple("HPT_OBJ", 'name param_grid method args')
@@ -52,16 +54,16 @@ def default(obj):
 '''
 gets the pest parameters, based onthe scoring metric
 '''
-def get_best_params_meanscore(res, score):
+def get_best_params_meanscore(res, score, max_i):
     # argfunc = np.argmin if score_type == 'loss' else np.argmax
     score_type = next(iter(score)) if isinstance(score, dict) else 'score'
     argfunc = np.argmax
     try:
-        best_params_index = argfunc(res['mean_test_'+score_type])
-        std_score = np.array(res['mean_test_'+score_type]).mean()
+        best_params_index = argfunc(res['mean_test_'+score_type][:max_i])
+        std_score = np.array(res['mean_test_'+score_type][:max_i]).mean()
     except Exception as e:
-        best_params_index = argfunc(res['mean_test_score'])
-        std_score = np.array(res['mean_test_score']).mean()
+        best_params_index = argfunc(res['mean_test_score'][:max_i])
+        std_score = np.array(res['mean_test_score'][:max_i]).mean()
     return best_params_index, std_score
 
 #-------------COMPARE HPT METHODS WITH DOUBLE CROSS VALIDATION-------------
@@ -154,7 +156,7 @@ compares the `hpt_objs`, for `model` - using double cross-validation
 scoring the tuning on `score` and the final results on `final_metric`
 dataset needs to be a tuple of (X,y)
 '''
-def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, random_state=3, name=None, verbose=0):
+def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, iters, random_state=3, name=None, verbose=0):
     #X, y =dataset
     X_train, X_test, y_train, y_test = dataset#train_test_split(X, y, test_size=0.2, random_state=random_state)
     results = []
@@ -166,22 +168,33 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, random_state=
             res = method(X_train, y_train, model, param_grid, scoring=score, **args)
             cv_time = time()-start
 
-            best_params_index, std_score =get_best_params_meanscore(res, score)
-            best_model = model(**res['params'][best_params_index])
-            y_pred = best_model.fit(X_train, y_train).predict(X_test)
-
-            acc = accuracy_score(y_test, y_pred)
             data = {
                 HPT_METHOD : m_name,
+                MODEL : model.__name__,
                 INNER_RES : res,
-                BEST_PARAMS : res['params'][best_params_index],
-                CONF_MATRIX : confusion_matrix(y_test, y_pred),
-                TEST_ACC : acc,
-                TEST_ERR : 1.0-acc,
-                STD_TEST_SCR: std_score,
-                PARAMS_SAMPLED : len(res['params']),
+                ITER_DATA : [],
                 CV_TIME: cv_time,
             }
+
+            for i in iters:
+
+                best_params_index, std_score = get_best_params_meanscore(res, score, i)
+                best_model = model(**res['params'][best_params_index])
+                y_pred = best_model.fit(X_train, y_train).predict(X_test)
+                acc = accuracy_score(y_test, y_pred)
+
+
+                data[ITER_DATA].append({
+                    ITER : i,
+                    BEST_PARAMS : res['params'][best_params_index],
+                    CONF_MATRIX : confusion_matrix(y_test, y_pred),
+                    TEST_ACC : acc,
+                    TEST_ERR : 1.0-acc,
+                    STD_TEST_SCR : std_score,
+                    PARAMS_SAMPLED : i,
+                }
+                )
+
             results.append(data)
 
             with open('./{}/{}-{}.json'.format(OUT_DIR, name, m_name), 'w') as outfile:
