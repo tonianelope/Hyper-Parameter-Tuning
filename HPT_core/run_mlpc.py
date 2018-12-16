@@ -48,7 +48,7 @@ CV_SPLITS = 10
 
 X_train, y_train = ds.load_mnist('data')
 X_test, y_test = ds.load_mnist('data', kind='t10k')
-data = (X_train, X_test, y_train, y_test)
+data = (X_train[:10000], X_test, y_train[:10000], y_test)
 
 # #print('DATA:')
 #n_features = dsBunch.data.shape[1]
@@ -62,10 +62,10 @@ data = (X_train, X_test, y_train, y_test)
 # DEFINE PARAM GRIDS
 # d_features = n_features//2
 # hls = [(d_features,)*3, (n_features,)*3, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
-hls = [(256,128,100), (256, 100), (128,100), (128,), (100,),]
+hls = [(256,128,100), (256, 100), (128,100), (256,), (128,), (100,),]
 alpha = [0.0001, 0.001, 0.01, 0.1]
-lr_init = [0.0001, 0.001, 0.01, 0.1, 1]
 #solver = ['adam', 'sgd']
+activations = ['relu', 'tanh', 'logistic']
 rs = [1]
 
 # sklean paramgrid
@@ -76,6 +76,7 @@ pg = {
     'learning_rate_init': lr_init,
     'random_state': rs,
   #  'solver': solver
+    'activation':activations,
 }
 
 # hyperopt paramgird
@@ -86,6 +87,7 @@ hg={
     'learning_rate_init': hp.loguniform('learning_rate_init', np.log(lr_init[0]),np.log(lr_init[-1])),
     'random_state': hp.choice('random_state', rs),
     #'solver': hp.choice('solver',solver)
+    'activation':hp.choice('activation',activations),
 }
 
 # skopt paramgrid
@@ -96,6 +98,7 @@ bg = {
     'learning_rate_init': Real(lr_init[0],lr_init[-1], 'logunifrom'),
     'random_state': rs,
     #'solver': Categorical(solver)
+    'activation':Categorical(activations),
 }
 
 # base model parameters
@@ -103,7 +106,7 @@ base = {
     'hidden_layer_sizes':(100,),
     'alpha':0.001,
     #'learning_rate': lr[0],
-    'learning_rate_init': 0.001,
+    #'learning_rate_init': 0.001,
     'random_state':1,
     #'solver' : solver[0]
 }
