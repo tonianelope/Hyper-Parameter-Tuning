@@ -51,8 +51,8 @@ X_test, y_test = ds.load_mnist('data', kind='t10k')
 data = (X_train, X_test, y_train, y_test)
 
 # #print('DATA:')
-n_features = dsBunch.data.shape[1]
-shp = dsBunch.data.shape
+#n_features = dsBunch.data.shape[1]
+#shp = dsBunch.data.shape
 #print(pd.DataFrame(dsTest.data).head)
 #print()
 #print(pd.DataFrame(dsTest.target).head)
@@ -100,7 +100,7 @@ bg = {
 
 # base model parameters
 base = {
-    'hidden_layer_sizes':(n_features,),
+    'hidden_layer_sizes':(100,),
     'alpha':0.001,
     #'learning_rate': lr[0],
     'learning_rate_init': 0.001,
@@ -122,11 +122,11 @@ hpt_objs = [
     HPT_OBJ('Grid Search', pg, grid_search, {'cv':CV_SPLITS, 'refit':'loss'}),
 ]
 
-scoring = {
-    'loss': make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=dsBunch.target),
-    'acc': make_scorer(accuracy_score),
-}
-    #scoring = make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=sorted(np.unique(data[1])))
+# scoring = {
+#     'loss': make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=dsBunch.target),
+#     'acc': make_scorer(accuracy_score),
+# }
+#     #scoring = make_scorer(log_loss, greater_is_better=True, needs_proba=True, labels=sorted(np.unique(data[1])))
 scoring =  make_scorer(accuracy_score)
 
 mlpc ={
