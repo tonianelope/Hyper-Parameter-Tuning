@@ -1,0 +1,6 @@
+Base-line accuracy = 87%
+Cross-validation score = 90.4%
+
+GridSearchCV accuracy = 90.3%
+RandomizedSearchCV accuracy = 89.8%
+

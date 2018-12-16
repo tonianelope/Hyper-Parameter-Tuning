@@ -9,3 +9,10 @@ HPT_core/__pycache__
 
 HPT_core/hyperopt-sklearn/
 HPT_core/.ipynb_checkpoints/
+/*.json
+*.json
+
+HPT_core/KNN TPE test.ipynb
+
+HPT_core/plots/
+HPT_core/data/
