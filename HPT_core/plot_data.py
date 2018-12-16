@@ -7,7 +7,7 @@ from hpt_cmp import *
 from plots import *
 
 PLOT_DIR = './plots'
-DATA_DIR = './output'
+DATA_DIR = './gc_out'
 
 name = 'test-plots'
 
@@ -15,11 +15,11 @@ onlyfiles = [f for f in listdir(DATA_DIR) if path.isfile(path.join(DATA_DIR, f))
 
 results = []
 
-dsBunch = ds.load_mnist_back()
-n_features = dsBunch.data.shape[1]
+#dsBunch = ds.load_mnist_back()
+n_features = 784
 # DEFINE PARAM GRIDS
 d_features = n_features*0.5
-hls = [(d_features,)*4, (n_features,)*4, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
+hls = [[d_features,]*3, [n_features,]*3, [d_features,]*2, [n_features,]*2, [d_features,], [n_features,],]
 alpha = [0.0001, 0.001, 0.01, 0.1]
 lr = ['adaptive','constant','invscaling']
 lr_init = [0.00001, 0.0001, 0.001, 0.01, 0.1]
@@ -93,7 +93,6 @@ def plot_res(res, it):
     scatterplot_param_distribution(res, params, 'mean_test_score')
     scatterplot_param_distribution(res, ['hidden_layer_sizes'], 'mean_test_score', hls)
     scatterplot_param_distribution(res, ['learning_rate'], 'mean_test_score', lr)
-
 
 for i in iterations:
     plot_res(results, i)

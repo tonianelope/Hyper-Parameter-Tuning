@@ -198,7 +198,7 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, iters, random
                 )
 
             results.append(data)
-
+            print('{} : {}'.format(m_name, acc))
             with open('./{}/{}-{}.json'.format(OUT_DIR, name, m_name), 'w') as outfile:
                 json.dump(data, outfile, default=default)
             pbar.update(1)
