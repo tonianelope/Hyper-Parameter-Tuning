@@ -23,6 +23,12 @@ random search for fashion data with kernel poly
 ('accuracy: ', 0.8254)
 ('Time: ', 2194.3907001018524)
 
+random search for fashion data with kernel poly SCALED with google
+{'C': 0.1, 'gamma': 0.01}
+('accuracy: ', 0.8609)
+Accuracy: (CrossVal) 0.86 (+/- 0.01)
+('Time: ', 22786.680344104767)
+
 Bayes on fashion data with kernel poly
 {'accuracy: ', 0.8254}
 {'kernel': 'poly', 'C': 0.0016091712967335617, 'gamma': 0.08421704243868701}
