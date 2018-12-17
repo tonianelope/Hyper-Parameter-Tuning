@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import mnist_reader
 from sklearn import svm
+from sklearn import preprocessing
 from sklearn.datasets import load_breast_cancer
 from sklearn import metrics
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -21,9 +22,8 @@ print("random search for fashion data with kernel poly ")
 
 start = timeit.default_timer()
 parameters = {'C':[0.001,0.01,0.1,1,10],'gamma':[0.001,0.01,0.1,1]}
-svc = svm.SVC('poly')
+svc = svm.SVC(kernel='poly')
 clf = RandomizedSearchCV(svc,parameters,n_iter=40)
-clf = svm.SVC(kernel=kernel_name)
 scores = cross_val_score(clf, X_train, y_train, cv=5)
 clf.fit(X_train,y_train)
 print(clf.best_params_)
