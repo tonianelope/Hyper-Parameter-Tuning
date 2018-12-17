@@ -1,0 +1,24 @@
+('*****FASHION BASELINE DATA with kernel=', 'poly', '*****')
+('accuracy: ', 0.8254)
+('Time: ', 57.30394721031189)
+
+('*****FASHION BASELINE DATA with kernel=', 'poly', 'SCALED *****')
+('accuracy: ', 0.8267)
+Accuracy: (CrossVal) 0.83 (+/- 0.01)
+('Time: ', 340.78959488868713)
+
+Grid Search for fashion data with kernel poly
+{'C': 0.001, 'gamma': 0.001}
+('accuracy: ', 0.8254)
+('Time: ', 2197.4373841285706)
+
+random search for fashion data with kernel poly 
+{'C': 0.001, 'gamma': 0.001}
+('accuracy: ', 0.8254)
+('Time: ', 2194.3907001018524)
+
+Bayes on fashion data with kernel poly
+{'accuracy: ', 0.8254}
+{'kernel': 'poly', 'C': 0.0016091712967335617, 'gamma': 0.08421704243868701}
+('Time: ', 2249.204232931137)
+

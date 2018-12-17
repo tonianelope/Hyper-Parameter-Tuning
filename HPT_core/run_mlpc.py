@@ -68,9 +68,7 @@ data = (X_train[:10000], X_test, y_train[:10000], y_test)
 # hls = [(d_features,)*3, (n_features,)*3, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
 hls = [(256,128,100),(256,100),(100,10), (100,),(10,10), (10,)]
 alpha = [0.0001, 0.001, 0.01]
-# lr_init = [0.0001, 0.001, 0.01, 0.1, 1]
 activations = ['relu', 'tanh', 'logistic']
-#solver = ['adam', 'sgd']
 rs = [1]
 
 # sklean paramgrid
@@ -80,7 +78,12 @@ pg = {
  #   'learning_rate': lr,
     #'learning_rate_init': lr_init,
     'random_state': rs,
+<<<<<<< HEAD
     'activation': activations
+=======
+  #  'solver': solver
+    'activation':activations,
+>>>>>>> e6815118af07bdd269e7a58d970250925551d047
 }
 
 # hyperopt paramgird
@@ -91,7 +94,11 @@ hg={
     #'learning_rate_init': hp.loguniform('learning_rate_init', np.log(lr_init[0]),np.log(lr_init[-1])),
     'random_state': hp.choice('random_state', rs),
     #'solver': hp.choice('solver',solver)
+<<<<<<< HEAD
     'activation':hp.choice('activation',activations)
+=======
+    'activation':hp.choice('activation',activations),
+>>>>>>> e6815118af07bdd269e7a58d970250925551d047
 }
 
 # skopt paramgrid
@@ -102,7 +109,11 @@ bg = {
     #'learning_rate_init': Real(lr_init[0],lr_init[-1], 'logunifrom'),
     'random_state': rs,
     #'solver': Categorical(solver)
+<<<<<<< HEAD
     'activation':Categorical(activations)
+=======
+    'activation':Categorical(activations),
+>>>>>>> e6815118af07bdd269e7a58d970250925551d047
 }
 
 # base model parameters
