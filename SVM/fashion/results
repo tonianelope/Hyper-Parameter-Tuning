@@ -34,3 +34,9 @@ Bayes on fashion data with kernel poly
 {'kernel': 'poly', 'C': 0.0016091712967335617, 'gamma': 0.08421704243868701}
 ('Time: ', 2249.204232931137)
 
+Bayes on fashion data with kernel poly with google SCALED
+0.8597
+{'C': 2.4637702397496652, 'kernel': 'poly', 'gamma': 0.0021998325312182327}
+Accuracy: (CrossVal) 0.86 (+/- 0.02)
+Time:  11327.449038765997
+
