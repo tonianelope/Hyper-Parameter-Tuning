@@ -36,7 +36,7 @@ print(name)
 print(max_iter)
 #sys.exit()
 
-CV_SPLITS = 10
+CV_SPLITS = 5
 
 # LOAD DATA
 #dsBunch = ds.load('iris')
@@ -48,8 +48,12 @@ CV_SPLITS = 10
 
 X_train, y_train = ds.load_mnist('data')
 X_test, y_test = ds.load_mnist('data', kind='t10k')
-data = (X_train, X_test, y_train, y_test)
 
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test)
+
+data = (X_train[:10000], X_test, y_train[:10000], y_test)
 # #print('DATA:')
 #n_features = dsBunch.data.shape[1]
 #shp = dsBunch.data.shape
@@ -62,9 +66,10 @@ data = (X_train, X_test, y_train, y_test)
 # DEFINE PARAM GRIDS
 # d_features = n_features//2
 # hls = [(d_features,)*3, (n_features,)*3, (d_features,)*2, (n_features,)*2, (d_features,), (n_features,),]
-hls = [(256,128,100), (256, 100), (128,100), (128,), (100,),]
-alpha = [0.0001, 0.001, 0.01, 0.1]
-lr_init = [0.0001, 0.001, 0.01, 0.1, 1]
+hls = [(256,128,100),(256,100),(100,10), (100,),(10,10), (10,)]
+alpha = [0.0001, 0.001, 0.01]
+# lr_init = [0.0001, 0.001, 0.01, 0.1, 1]
+activations = ['relu', 'tanh', 'logistic']
 #solver = ['adam', 'sgd']
 rs = [1]
 
@@ -73,9 +78,9 @@ pg = {
     'hidden_layer_sizes': hls,
     'alpha': alpha,
  #   'learning_rate': lr,
-    'learning_rate_init': lr_init,
+    #'learning_rate_init': lr_init,
     'random_state': rs,
-  #  'solver': solver
+    'activation': activations
 }
 
 # hyperopt paramgird
@@ -83,9 +88,10 @@ hg={
     'hidden_layer_sizes': hp.choice('hidden_layer_sizes',hls),
     'alpha': hp.loguniform('alpha', np.log(alpha[0]), np.log(alpha[-1])),
    # 'learning_rate': hp.choice('learning_rate',lr),
-    'learning_rate_init': hp.loguniform('learning_rate_init', np.log(lr_init[0]),np.log(lr_init[-1])),
+    #'learning_rate_init': hp.loguniform('learning_rate_init', np.log(lr_init[0]),np.log(lr_init[-1])),
     'random_state': hp.choice('random_state', rs),
     #'solver': hp.choice('solver',solver)
+    'activation':hp.choice('activation',activations)
 }
 
 # skopt paramgrid
@@ -93,9 +99,10 @@ bg = {
     'hidden_layer_sizes': Categorical(hls),
     'alpha': Real(alpha[0], alpha[-1], 'loguniform'),
     #'learning_rate': Categorical(lr),
-    'learning_rate_init': Real(lr_init[0],lr_init[-1], 'logunifrom'),
+    #'learning_rate_init': Real(lr_init[0],lr_init[-1], 'logunifrom'),
     'random_state': rs,
     #'solver': Categorical(solver)
+    'activation':Categorical(activations)
 }
 
 # base model parameters
@@ -103,11 +110,10 @@ base = {
     'hidden_layer_sizes':(100,),
     'alpha':0.001,
     #'learning_rate': lr[0],
-    'learning_rate_init': 0.001,
+    #'learning_rate_init': 0.001,
     'random_state':1,
     #'solver' : solver[0]
 }
-
 
 # RUN COMPARISON
 
@@ -134,7 +140,7 @@ mlpc ={
     'hpt_objs': hpt_objs,
     'score': scoring,
     'final_metric': accuracy_score,
-    'iters' : [ i for i in range(st, end, step)],
+    'iters' : [ i for i in range(st, end+1, step)],
     'name': '{}_{}'.format(name,max_iter),
     'random_state': 1,
     #    'cv': CV_SPLITS
