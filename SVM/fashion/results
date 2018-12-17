@@ -2,6 +2,11 @@
 ('accuracy: ', 0.8254)
 ('Time: ', 57.30394721031189)
 
+('*****FASHION BASELINE DATA with kernel=', 'poly', 'SCALED *****')
+('accuracy: ', 0.8267)
+Accuracy: (CrossVal) 0.83 (+/- 0.01)
+('Time: ', 340.78959488868713)
+
 Grid Search for fashion data with kernel poly
 {'C': 0.001, 'gamma': 0.001}
 ('accuracy: ', 0.8254)
