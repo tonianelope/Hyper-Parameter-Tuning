@@ -5,6 +5,7 @@ from skopt import BayesSearchCV
 from skopt.space import Real, Categorical
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn import preprocessing
 import timeit
 
 class BayesSearchCV(BayesSearchCV):
