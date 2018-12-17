@@ -12,6 +12,12 @@ Grid Search for fashion data with kernel poly
 ('accuracy: ', 0.8254)
 ('Time: ', 2197.4373841285706)
 
+Grid Search for fashion data with kernel poly SCALED with google
+{'gamma': 0.01, 'C': 0.1}
+accuracy:  0.8609
+Accuracy: (CrossVal) 0.86 (+/- 0.01)
+Time:  22480.99122145
+
 random search for fashion data with kernel poly 
 {'C': 0.001, 'gamma': 0.001}
 ('accuracy: ', 0.8254)
