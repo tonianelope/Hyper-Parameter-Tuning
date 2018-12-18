@@ -111,7 +111,7 @@ def barplot(x, y, data, textval, title=None, xlabel=None, ylabel=None, xtick=[],
 
     for i, val in enumerate(data.iterrows()):
         px, py = (i, val[1][y]) if x==HPT_METHOD else (val[1][x], i)
-        t = round(float(val[1][textval]),2)
+        t = round(float(val[1][textval]),3)
         g.text(px, py, t, ha='center')
 
     g.set_title(title)

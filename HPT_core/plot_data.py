@@ -1,5 +1,6 @@
 from os import listdir, path
 
+import numpy as np
 import seaborn as sns
 
 import dataset_loader as ds
@@ -7,15 +8,14 @@ from hpt_cmp import *
 from plots import *
 
 
-def plot_params_vs_score(all_params, cor_df, lables, scaled=True):
+def plot_params_vs_score(all_params, cor_df, lables, param_labels, scaled=True):
     fig, axs = plt.subplots(1,3, figsize=(24,6))
 
-    for i, hyper in enumerate(all_params[:-1]):
+    for i, hyper in enumerate(all_params[1:]):
         if scaled : axs[i].set_ylim([0,1])
         sns.regplot(hyper, 'mean_test_score', data=cor_df, ax=axs[i])
-        axs[i].scatter(best_random_hyp[hyper], best_random_hyp['mean_test_score'], marker = '*', s = 200, c = 'k')
-        axs[i].set(xlabel = '{}'.format(hyper), ylabel = 'Accuracy', title = 'Accuracy vs {}'.format(hyper));
-        print(hyper)
+        #axs[i].scatter(best_random_hyp[hyper], best_random_hyp['mean_test_score'], marker = '*', s = 200, c = 'k')
+        axs[i].set(xlabel = '{}'.format(param_labels[i]), ylabel = 'Accuracy', title = 'Accuracy vs {}'.format(param_labels[i]));
         if not hyper=='param_alpha':
             axs[i].set_xticks([i for i in range(len(lables[i]))])
             axs[i].set_xticklabels(lables[i], rotation=45)
@@ -93,7 +93,7 @@ rs = [1]
 
 #
 files = ['-Baseline.json', '-Grid Search.json', '-Bayes Search.json', '-Random Search.json', '-Tree of Parzen Est..json']
-prefix = 'grid_30'
+prefix = 'fa-a_50'
 name = prefix
 
 for i, s in enumerate(files):
@@ -141,8 +141,9 @@ for r in results:
     #plt.show()
 saveplot('{}_{}_x.png'.format(name, r[HPT_METHOD]))
 
-# plot correlation
-all_params = ['param_alpha', 'param_hidden_layer_sizes', 'param_activation', 'mean_test_score']
+# PLOT CORROLATION
+all_params = [ 'mean_test_score','param_alpha', 'param_hidden_layer_sizes', 'param_activation']
+param_labels = [ 'accuracy','alpha', 'hidden layers', 'activation']
 data = {}
 for i in all_params:
     data[i] = []
@@ -171,17 +172,22 @@ cor_df['param_activation'] = cor_df['param_activation'].map(lambda x: activation
 cor = cor_df.corr()
 
 fig, ax = plt.subplots()
-sns.heatmap(cor, xticklabels=cor.columns.values, yticklabels=cor.columns.values, annot=True, cmap=plt.cm.Blues)
+mask = np.zeros_like(cor, dtype=np.bool)
+mask[np.triu_indices_from(mask)] = True
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+
+sns.heatmap(cor, mask= mask, xticklabels=param_labels, yticklabels=param_labels, annot=True, cmap=cmap)#plt.cm.Blues)
 fig.tight_layout()
 saveplot('{}-corr.png'.format(name))
+
 
 best_random_hyp = {}
 indx = np.argmax(data['mean_test_score'])
 for i in all_params:
     best_random_hyp[i] = data_df[i][indx]
 
-plot_params_vs_score(all_params, cor_df, [[], hls, activations])
-plot_params_vs_score(all_params, cor_df, [[], hls, activations], scaled=False)
+plot_params_vs_score(all_params, cor_df, [[], hls, activations], param_labels)
+plot_params_vs_score(all_params, cor_df, [[], hls, activations], param_labels,scaled=False)
 
 for i in iterations:
     plot_res(results, i)
