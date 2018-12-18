@@ -41,5 +41,7 @@ Accuracy: (CrossVal) 0.86 (+/- 0.02)
 Time:  11327.449038765997
 
 TPE on fashion data with kernel poly with google SCALED
+('accuracy: ', 0.8606)
+Accuracy: (CrossVal) 0.86 (+/- 0.02)
 ('best: ', {'kernel': poly, 'C': 2.1243082124261257, 'gamma': 0.4515865669918433}, ' time: ', 20564.2204349041)
 
