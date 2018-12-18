@@ -182,9 +182,9 @@ def cmp_hpt_methods(dataset, hpt_objs, model, score, final_metric, iters, random
 
                 best_params_index, std_score = get_best_params_meanscore(res, score, i)
                 best_model = model(**res['params'][best_params_index])
-                y_pred = best_model.fit(X_train, y_train).predict(X_test)
-                acc = accuracy_score(y_test, y_pred)
-
+                clf = best_model.fit(X_train, y_train)
+                y_pred = clf.predict(X_test)
+                acc = clf.score(X_test, y_test)
 
                 data[ITER_DATA].append({
                     ITER : i,

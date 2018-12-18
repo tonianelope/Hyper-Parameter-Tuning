@@ -70,7 +70,7 @@ scoring      -> name of the column to score them by
 param_classes-> dict with lables for parameters
 '''
 def boxplot_param_distribution(all_results, params, scoring, param_classes=None):
-
+    sn.set(style="whitegrid")
     for param in params:
         plt.figure()
         # plt.xticks(rotation=45)
@@ -95,6 +95,7 @@ def scatterplot_param_distribution(list_of_res, params, scoring, param_classes=N
             data = method[INNER_RES]
             x = data['param_'+param]
             x = x if not param_classes else [param_classes.index(val) for val in x]
+            sn.set(style="whitegrid")
             ax = sn.scatterplot(x=x, y=data[scoring], label=method[HPT_METHOD])
             ax.set_ylabel(scoring)
             ax.set_xlabel(param)
@@ -105,6 +106,7 @@ def scatterplot_param_distribution(list_of_res, params, scoring, param_classes=N
 
 def barplot(x, y, data, textval, title=None, xlabel=None, ylabel=None, xtick=[], ytick=[]):
     fig, ax = plt.subplots()
+    sn.set(style="whitegrid")
     g = sn.barplot(x=x, y=y, data=data, ax=ax)
 
     for i, val in enumerate(data.iterrows()):

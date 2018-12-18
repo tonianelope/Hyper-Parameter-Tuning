@@ -100,9 +100,9 @@ def load_mnist_test(return_X_y=False):
     return load_mnist_("t10k-images-idx3-ubyte", "t10k-labels-idx1-ubyte",
         "mnist_test.csv", 10000)
 
-def load_mnist(return_X_y=False):
-    return load_mnist_("train-images-idx3-ubyte", "train-labels-idx1-ubyte",
-        "mnist_train.csv", 60000)
+#def load_mnist(return_X_y=False):
+ #   return load_mnist_("train-images-idx3-ubyte", "train-labels-idx1-ubyte",
+#        "mnist_train.csv", 60000)
 
 def mnist_rot_to_csv(csv_name, base, t):
     file = os.path.join('./data', base+t+".amat")
